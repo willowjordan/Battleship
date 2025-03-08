@@ -1,0 +1,1 @@
+This program will use socket connections to allow two players to connect over a local network (maybe the internet if I can figure that out) and play a game of Battleship.
