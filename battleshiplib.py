@@ -14,3 +14,19 @@ class Board():
     
     def fireShot(self, other, pos):
         pass
+
+class Player():
+    def __init__(self):
+        self.board = Board()
+
+class LocalPlayer(Player):
+    def __init__(self):
+        super().__init__()
+
+class RemotePlayer(Player):
+    def __init__(self):
+        super().__init__()
+
+class ComputerPlayer(Player):
+    def __init__(self):
+        super().__init__()

@@ -1,4 +1,5 @@
 import tkinter as tk
+from battleshiplib import *
 
 class TitleScreen(tk.Frame):
     def __init__(self, master):
@@ -10,8 +11,9 @@ class TitleScreen(tk.Frame):
         BUTTONHEIGHT = 7
 
         self.label = tk.Label(self, text="Battleship", font=('Arial', 18))
+        self.localbutton = tk.Button(self, command=self.local_game, text="Play VS Computer", width=BUTTONWIDTH, height=BUTTONHEIGHT)
         self.hostbutton = tk.Button(self, command=self.host_screen, text="Host Game", width=BUTTONWIDTH, height=BUTTONHEIGHT)
-        self.joinbutton = tk.Button(self, command=self.master.join_screen, text="Join Game", width=BUTTONWIDTH, height=BUTTONHEIGHT)
+        self.joinbutton = tk.Button(self, command=self.join_screen, text="Join Game", width=BUTTONWIDTH, height=BUTTONHEIGHT)
         self.exitbutton = tk.Button(self, command=self.master.destroy, text="Quit", width=BUTTONWIDTH, height=BUTTONHEIGHT)
 
         self.label.pack(pady=PAD)
@@ -19,9 +21,18 @@ class TitleScreen(tk.Frame):
         self.joinbutton.pack(pady=PAD)
         self.exitbutton.pack(pady=PAD)
     
+    def local_game(self):
+        self.master.player = LocalPlayer()
+        self.master.opponent = ComputerPlayer()
+        self.master.next_frame = GameScreen(self.master)
+        self.master.display_next()
+    
     def host_screen(self):
         self.master.next_frame = HostScreen(self.master)
         self.master.display_next()
+    
+    def join_screen(self):
+        pass
 
 class HostScreen(tk.Frame):
     def __init__(self, master):
@@ -59,6 +70,10 @@ class GameScreen(tk.Frame):
     def __init__(self, master):
         super().__init__()
         self.master = master
+
+        # display player's board
+    
+
 
 # main game object
 class Game(tk.Tk):
