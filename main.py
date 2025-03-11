@@ -17,6 +17,7 @@ class TitleScreen(tk.Frame):
         self.exitbutton = tk.Button(self, command=self.master.destroy, text="Quit", width=BUTTONWIDTH, height=BUTTONHEIGHT)
 
         self.label.pack(pady=PAD)
+        self.localbutton.pack(pady=PAD)
         self.hostbutton.pack(pady=PAD)
         self.joinbutton.pack(pady=PAD)
         self.exitbutton.pack(pady=PAD)
@@ -49,6 +50,7 @@ class HostScreen(tk.Frame):
         self.displaynamelabel = tk.Label(self, text="Display Name: ")
         self.displayname = tk.Text(self, height=3, bg="white", fg="black")
         self.startbutton = tk.Button(self, command=self.createLobby, text="Start Lobby", width=BUTTONWIDTH, height=BUTTONHEIGHT)
+        self.backbutton = tk.Button(self, command=self.back, text="Back", width=BUTTONWIDTH, height=BUTTONHEIGHT)
 
         self.label.grid(row=1, column=1, columnspan=2)
         self.lobbynamelabel.grid(row=2, column=1)
@@ -56,9 +58,14 @@ class HostScreen(tk.Frame):
         self.displaynamelabel.grid(row=3, column=1)
         self.displayname.grid(row=3, column=2)
         self.startbutton.grid(row=4, column=1, columnspan=2)
+        self.backbutton.grid(row=5, column=1, columnspan=2)
     
     def createLobby(self):
         pass
+    
+    def back(self):
+        self.master.next_frame = TitleScreen(self.master)
+        self.master.display_next()
 
 class JoinScreen(tk.Frame):
     def __init__(self, master):
@@ -71,15 +78,25 @@ class GameScreen(tk.Frame):
         super().__init__()
         self.master = master
 
-        # display player's board
-    
+        # display game UI
+        self.maincanvas = tk.Canvas(self, height=800, width=800, background="lightblue")
+
+        self.turnframe = tk.Frame(self.maincanvas, bg="gray")
+        self.turnlabel = tk.Label(self.turnframe, text="Player's Turn")
+        self.turnlabel.pack()
+
+        # pack frames
+        self.maincanvas.create_window(0, 0, anchor="nw", width=800, height=50)
+
+        self.maincanvas.pack()
+        
 
 
 # main game object
 class Game(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.geometry("500x500")
+        self.geometry("800x800")
         self.title("Battleship")
 
         self.current_frame = None # current frame being displayed
