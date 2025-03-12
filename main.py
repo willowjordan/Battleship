@@ -73,22 +73,25 @@ class JoinScreen(tk.Frame):
         self.master = master
 
 # container representing the main interactive area (primary grid and targeting grid)
-class GameScreen(tk.Frame):
+class GameScreen(tk.Canvas):
     def __init__(self, master):
-        super().__init__()
+        super().__init__(height=800, width=800)
         self.master = master
-
-        # display game UI
-        self.maincanvas = tk.Canvas(self, height=800, width=800, background="lightblue")
-
-        self.turnframe = tk.Frame(self.maincanvas, bg="gray")
-        self.turnlabel = tk.Label(self.turnframe, text="Player's Turn")
-        self.turnlabel.pack()
-
-        # pack frames
-        self.maincanvas.create_window(0, 0, anchor="nw", width=800, height=50)
-
-        self.maincanvas.pack()
+        
+        # create frames
+        self.info_frame = tk.Frame(self, bg="gray")
+        self.create_window(0, 0, window=self.info_frame, anchor="nw", width=200, height=800)
+        self.targeting_frame = tk.Frame(self, bg="red")
+        self.create_window(200, 0, window=self.targeting_frame, anchor="nw", width=400, height=400)
+        self.primary_frame = tk.Frame(self, bg="blue")
+        self.create_window(200, 400, window=self.primary_frame, anchor="nw", width=400, height=400)
+        self.enemyships_frame = tk.Frame(self, bg="gray")
+        self.create_window(600, 0, window=self.enemyships_frame, anchor="nw", width=200, height=400)
+        self.myships_frame = tk.Frame(self, bg="lightgray")
+        self.create_window(600, 400, window=self.myships_frame, anchor="nw", width=200, height=400)
+        
+        # TODO: add elements to specific frames
+        
         
 
 
