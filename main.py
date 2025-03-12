@@ -23,24 +23,21 @@ class TitleScreen(tk.Frame):
         self.exitbutton.pack(pady=PAD)
     
     def local_game(self):
-        self.master.player = LocalPlayer()
-        self.master.opponent = ComputerPlayer()
-        self.master.next_frame = GameScreen(self.master)
+        self.master.next_screen = GameScreen(self.master, LocalPlayer(), ComputerPlayer())
         self.master.display_next()
     
     def host_screen(self):
-        self.master.next_frame = HostScreen(self.master)
+        self.master.next_screen = HostScreen(self.master)
         self.master.display_next()
     
     def join_screen(self):
-        pass
+        pass #TODO: complete this
 
 class HostScreen(tk.Frame):
     def __init__(self, master):
         super().__init__()
         self.master = master
 
-        PAD = 10
         BUTTONWIDTH = 40
         BUTTONHEIGHT = 7
 
@@ -61,10 +58,10 @@ class HostScreen(tk.Frame):
         self.backbutton.grid(row=5, column=1, columnspan=2)
     
     def createLobby(self):
-        pass
+        pass #TODO: complete this
     
     def back(self):
-        self.master.next_frame = TitleScreen(self.master)
+        self.master.next_screen = TitleScreen(self.master)
         self.master.display_next()
 
 class JoinScreen(tk.Frame):
@@ -74,26 +71,77 @@ class JoinScreen(tk.Frame):
 
 # container representing the main interactive area (primary grid and targeting grid)
 class GameScreen(tk.Canvas):
-    def __init__(self, master):
-        super().__init__(height=800, width=800)
+    def __init__(self, master, player, opponent):
+        super().__init__(master, width=800, height=800, bd=0, highlightthickness=0, relief='ridge')
         self.master = master
-        
-        # create frames
-        self.info_frame = tk.Frame(self, bg="gray")
-        self.create_window(0, 0, window=self.info_frame, anchor="nw", width=200, height=800)
-        self.targeting_frame = tk.Frame(self, bg="red")
-        self.create_window(200, 0, window=self.targeting_frame, anchor="nw", width=400, height=400)
-        self.primary_frame = tk.Frame(self, bg="blue")
-        self.create_window(200, 400, window=self.primary_frame, anchor="nw", width=400, height=400)
-        self.enemyships_frame = tk.Frame(self, bg="gray")
-        self.create_window(600, 0, window=self.enemyships_frame, anchor="nw", width=200, height=400)
-        self.myships_frame = tk.Frame(self, bg="lightgray")
-        self.create_window(600, 400, window=self.myships_frame, anchor="nw", width=200, height=400)
-        
-        # TODO: add elements to specific frames
-        
-        
+        self.player = player
+        self.opponent = opponent
 
+        self.drawSidebar()
+        self.drawTargetingGrid()
+        self.drawPrimaryGrid()
+        self.drawEnemyShips()
+        self.drawMyShips()
+
+        # draw grid lines
+        
+        '''# create frames
+        self.info_frame = self.InfoSidebar(self)
+        self.targeting_frame = self.TargetingGrid(self)
+        self.primary_frame = self.PrimaryGrid(self)
+        self.enemyships_frame = self.EnemyShips(self)
+        self.myships_frame = self.MyShips(self)
+        
+        # pack frames
+        self.create_window(0, 0, window=self.info_frame, anchor="nw", width=200, height=800)
+        self.create_window(200, 0, window=self.targeting_frame, anchor="nw", width=400, height=400)
+        self.create_window(600, 400, window=self.myships_frame, anchor="nw", width=200, height=400)
+        self.create_window(600, 0, window=self.enemyships_frame, anchor="nw", width=200, height=400)
+        self.create_window(200, 400, window=self.primary_frame, anchor="nw", width=400, height=400)'''
+    
+    # draw functions
+    def drawSidebar(self):
+        self.create_rectangle(0, 0, 200, 800, fill="gray", width=0)
+
+    def drawTargetingGrid(self):
+        self.create_rectangle(200, 0, 600, 400, fill="red", width=0)
+
+    def drawPrimaryGrid(self):
+        self.create_rectangle(200, 400, 600, 800, fill="blue", width=0)
+
+    def drawEnemyShips(self):
+        self.create_rectangle(600, 0, 800, 400, fill="gray", width=0)
+
+    def drawMyShips(self):
+        self.create_rectangle(600, 400, 800, 800, fill="lightgray", width=0)
+
+    # inner frame classes
+    '''class InfoSidebar(tk.Frame):
+        def __init__(self, master):
+            super().__init__(bg="gray")
+            self.master = master
+
+    class TargetingGrid(tk.Frame):
+        def __init__(self, master):
+            super().__init__(bg="red")
+            self.master = master
+            self.player = master.player
+
+    class PrimaryGrid(tk.Frame):
+        def __init__(self, master):
+            super().__init__(bg="blue")
+            self.master = master
+
+    class EnemyShips(tk.Frame):
+        def __init__(self, master):
+            super().__init__(bg="gray")
+            self.master = master
+
+    class MyShips(tk.Frame):
+        def __init__(self, master):
+            super().__init__(bg="lightgray")
+            self.master = master'''
+        
 
 # main game object
 class Game(tk.Tk):
@@ -102,8 +150,8 @@ class Game(tk.Tk):
         self.geometry("800x800")
         self.title("Battleship")
 
-        self.current_frame = None # current frame being displayed
-        self.next_frame = TitleScreen(self) # next frame to be displayed
+        self.current_screen = None # current frame being displayed
+        self.next_screen = TitleScreen(self) # next frame to be displayed
         self.display_next()
 
     def title_screen(self):
@@ -120,11 +168,11 @@ class Game(tk.Tk):
 
     # destroy current frame and display next
     def display_next(self):
-        if self.current_frame is not None:
-            self.current_frame.destroy()
-        self.current_frame = self.next_frame
-        self.current_frame.pack()
-        self.next_frame = None
+        if self.current_screen is not None:
+            self.current_screen.destroy()
+        self.current_screen = self.next_screen
+        self.current_screen.pack()
+        self.next_screen = None
 
 
 
