@@ -77,43 +77,67 @@ class GameScreen(tk.Canvas):
         self.player = player
         self.opponent = opponent
 
-        self.drawSidebar()
-        self.drawTargetingGrid()
-        self.drawPrimaryGrid()
-        self.drawEnemyShips()
-        self.drawMyShips()
+        # create PhotoImages
+        self.ocean = tk.PhotoImage(file="assets/ocean.png")
+        self.radar = tk.PhotoImage(file="assets/radar.png")
 
-        # draw grid lines
-        
-        '''# create frames
-        self.info_frame = self.InfoSidebar(self)
-        self.targeting_frame = self.TargetingGrid(self)
-        self.primary_frame = self.PrimaryGrid(self)
-        self.enemyships_frame = self.EnemyShips(self)
-        self.myships_frame = self.MyShips(self)
-        
-        # pack frames
-        self.create_window(0, 0, window=self.info_frame, anchor="nw", width=200, height=800)
-        self.create_window(200, 0, window=self.targeting_frame, anchor="nw", width=400, height=400)
-        self.create_window(600, 400, window=self.myships_frame, anchor="nw", width=200, height=400)
-        self.create_window(600, 0, window=self.enemyships_frame, anchor="nw", width=200, height=400)
-        self.create_window(200, 400, window=self.primary_frame, anchor="nw", width=400, height=400)'''
+        self.drawBackground()
+    
+    # draw things that won't change
+    def drawBackground(self):
+        # component backgrounds
+        self.create_rectangle(0, 0, 200, 800, fill="lightgray", width=0) # info sidebar
+        self.create_image(200, 0, image=self.ocean, anchor="nw") # targeting and primary grid background
+        self.create_rectangle(600, 0, 800, 400, fill="lightgray", width=0) # enemy ships
+        self.create_rectangle(600, 400, 800, 800, fill="lightgray", width=0) # your ships
+
+        # lines separating components
+        self.create_line(200, 0, 200, 800, width=2)
+        self.create_line(600, 400, 800, 400, width=2)
+        self.create_line(600, 0, 600, 800, width=2)
+
+        # targeting grid
+        self.create_text(400, 25, anchor="center", text="Targeting Grid", fill="lightgreen", font=("Helvetica", "16"))
+        self.create_image(250, 50, image=self.radar, anchor="nw")
+        self.create_line(250, 50, 550, 50, fill="green", width=1)
+        self.create_line(550, 50, 550, 350, fill="green", width=1)
+        self.create_line(550, 350, 250, 350, fill="green", width=1)
+        self.create_line(250, 350, 250, 50, fill="green", width=1)
+
+        # primary grid
+        self.create_text(400, 425, anchor="center", text="Primary Grid", fill="lightgreen", font=("Helvetica", "16"))
+        self.create_image(250, 450, image=self.radar, anchor="nw")
+        self.create_line(250, 450, 550, 450, fill="green", width=1)
+        self.create_line(550, 450, 550, 750, fill="green", width=1)
+        self.create_line(550, 750, 250, 750, fill="green", width=1)
+        self.create_line(250, 750, 250, 450, fill="green", width=1)
+    
+    # draw a 10x10 grid with the NW corner at (x, y) of size x size using lines of color and thickness
+    '''def drawGrid(self, x, y, size, color, thickness):
+        # vert
+        for i in range(0, 11):
+            realx = x + int(size * (i/10))
+            self.create_line(realx, y, realx, y+size, fill=color, width=thickness)
+        # horiz
+        for i in range(0, 11):
+            realy = y + int(size * (i/10))
+            self.create_line(x, realy, x+size, realy, fill=color, width=thickness)'''
     
     # draw functions
     def drawSidebar(self):
-        self.create_rectangle(0, 0, 200, 800, fill="gray", width=0)
+        pass
 
     def drawTargetingGrid(self):
-        self.create_rectangle(200, 0, 600, 400, fill="red", width=0)
+        pass
 
     def drawPrimaryGrid(self):
-        self.create_rectangle(200, 400, 600, 800, fill="blue", width=0)
+        pass
 
     def drawEnemyShips(self):
-        self.create_rectangle(600, 0, 800, 400, fill="gray", width=0)
+        pass
 
     def drawMyShips(self):
-        self.create_rectangle(600, 400, 800, 800, fill="lightgray", width=0)
+        pass
 
     # inner frame classes
     '''class InfoSidebar(tk.Frame):
@@ -177,5 +201,9 @@ class Game(tk.Tk):
 
 
 if __name__ == "__main__":
-    game = Game()
-    game.mainloop()
+    #game = Game()
+    #game.mainloop()
+    root = tk.Tk()
+    game = GameScreen(root, LocalPlayer(), ComputerPlayer())
+    game.pack()
+    root.mainloop()
