@@ -1,16 +1,41 @@
 class Ship():
-    # name:str - name/id of ship
-    # pos:(int, int) - position of the origin of the ship
+    # pos:[int, int] - position of the origin of the ship
     # l:int - length
-    # d:(int, int) - direction the ship is pointing in; can be (1, 0), (0, 1), (-1, 0), or (0, -1)
-    def __init__(self, name, pos, l, d):
+    # d:[int, int] - direction the ship is pointing in; can be [1, 0], [0, 1], [-1, 0], or [0, -1]
+    # name:str - name/id of ship
+    def __init__(self, pos:list[int, int], l:int, d:list[int, int], name:str=""):
         self.name = name
         self.pos = pos
         self.length = l
         self.direction = d
+        self.generateSpaces()
+    
+    def generateSpaces(self):
         self.spaces = [] # all spaces the ship occupies
-        for i in range(0, l):
-            self.spaces.append((pos[0] + d[0]*i, pos[1] + d[1]*i))
+        for i in range(0, self.length):
+            self.spaces.append([self.pos[0] + self.direction[0]*i, self.pos[1] + self.direction[1]*i])
+        self.spaces.sort()
+
+    # translate the ship based on translation vector
+    def translate(self, transVector:list[int, int]):
+        self.pos[0] += transVector[0]
+        self.pos[1] += transVector[1]
+
+        for space in self.spaces:
+            space[0] += transVector[0]
+            space[1] += transVector[1]
+        self.spaces.sort()
+    
+    # rotate the ship clockwise one time
+    def rotateClockwise(self):
+        # change direction var
+        temp = self.direction[1]
+        self.direction[1] = self.direction[0]
+        if self.direction[1] == 0:
+            self.direction[0] = -temp
+        else: self.direction[0] = 0
+
+        self.generateSpaces()
     
     def isSunk(self):
         return len(self.spaces == 0)

@@ -74,19 +74,26 @@ class GameScreen(tk.Canvas):
     def __init__(self, master, player, opponent):
         super().__init__(master, width=800, height=800, bd=0, highlightthickness=0, relief='ridge')
         self.master = master
-        self.player = player
-        self.opponent = opponent
-        self.turn = player # whose turn it is
-        self.game_phase = "Setup"
+        self.player:Player = player
+        self.opponent:Player = opponent
+        self.turn:Player = player # whose turn it is
+        self.game_phase:str = "Setup"
 
         # create PhotoImages
         self.ocean = tk.PhotoImage(file="assets/ocean.png")
         self.radar = tk.PhotoImage(file="assets/radar.png")
 
+        # constants
+        self.PBOARD_X = 250
+        self.PBOARD_Y = 450
+        self.PBOARD_SPACE = 30 # width of one space on the board
+
         self.drawBackground()
 
         self.master.bind("<Key>", self.onKeyPress)
         self.bind("<Button-1>", self.onClick)
+
+
     
     ''' DRAWING FUNCTIONS '''
     # draw things that won't change
@@ -123,56 +130,77 @@ class GameScreen(tk.Canvas):
 
         # enemy ships
         self.create_text(700, 25, anchor="center", text="Enemy Ships", fill="black", font=("Helvetica", "16"))
-        self.drawHorizShip(600+PAD_X, 50, 5)
-        self.drawHorizShip(600+PAD_X, 50+PAD_Y, 4)
-        self.drawHorizShip(600+PAD_X, 50+2*PAD_Y, 3)
-        self.drawHorizShip(600+PAD_X, 50+3*PAD_Y, 3)
-        self.drawHorizShip(600+PAD_X, 50+4*PAD_Y, 2)
+        self.drawShip(600+PAD_X, 50, 5)
+        self.drawShip(600+PAD_X, 50+PAD_Y, 4)
+        self.drawShip(600+PAD_X, 50+2*PAD_Y, 3)
+        self.drawShip(600+PAD_X, 50+3*PAD_Y, 3)
+        self.drawShip(600+PAD_X, 50+4*PAD_Y, 2)
 
         # friendly ships
         self.create_text(700, 425, anchor="center", text="Your Ships", fill="black", font=("Helvetica", "16"))
-        self.drawHorizShip(600+PAD_X, 450, 5)
-        self.drawHorizShip(600+PAD_X, 450+PAD_Y, 4)
-        self.drawHorizShip(600+PAD_X, 450+2*PAD_Y, 3)
-        self.drawHorizShip(600+PAD_X, 450+3*PAD_Y, 3)
-        self.drawHorizShip(600+PAD_X, 450+4*PAD_Y, 2)
+        self.drawShip(600+PAD_X, 450, 5)
+        self.drawShip(600+PAD_X, 450+PAD_Y, 4)
+        self.drawShip(600+PAD_X, 450+2*PAD_Y, 3)
+        self.drawShip(600+PAD_X, 450+3*PAD_Y, 3)
+        self.drawShip(600+PAD_X, 450+4*PAD_Y, 2)
 
         self.sidebar = self.InfoSidebar(self)
         self.create_window(0, 0, width=200, height=800, anchor="nw", window=self.sidebar)
     
-    # draw a horizontal ship of length with its NW corner at (x, y)
-    # each square of the ship is 30 x 30 pixels
-    def drawHorizShip(self, x, y, length):
-        # colored backdrop
-        self.create_rectangle(x, y, x+30*length, y+30, fill="gray")
+    def drawShip(self, x, y, length, vertical=False, color="gray", tags=None):
+        """
+        drawShip draws a ship consisting of 30px by 30px squares
 
-        # border lines
-        self.create_line(x, y, x+30*length, y, width=2)
-        self.create_line(x, y+30, x+30*length, y+30, width=2)
-        self.create_line(x, y, x, y+30, width=2)
-        self.create_line(x+30*length, y, x+30*length, y+30, width=2)
+        :param x: x location of NW corner of ship 
+        :param y: y location of NW corner of ship
+        :param length: length of ship in squares
+        :param vertical: draw ship vertically if true, horizontally if false
+        :param color: color of ship
+        :param tags: tags to be included in all shapes used to draw the ship
+        """
 
-        # inside lines
-        for i in range(1, length):
-            newX = x + 30 * i
-            self.create_line(newX, y, newX, y+30, width=1)
+        if not vertical:
+            # colored backdrop
+            self.create_rectangle(x, y, x+30*length, y+30, fill=color, tags=tags)
 
-    # draw a horizontal ship of length with its NW corner at (x, y)
-    # each square of the ship is 30 x 30 pixels
-    def drawVertShip(self, x, y, length):
-        # colored backdrop
-        self.create_rectangle(x, y, x+30, y+30*length, fill="gray")
+            # border lines
+            self.create_line(x, y, x+30*length, y, width=2, tags=tags)
+            self.create_line(x, y+30, x+30*length, y+30, width=2, tags=tags)
+            self.create_line(x, y, x, y+30, width=2, tags=tags)
+            self.create_line(x+30*length, y, x+30*length, y+30, width=2, tags=tags)
 
-        # border lines
-        self.create_line(x, y, x, y+30*length, width=2)
-        self.create_line(x+30, y, x+30, y+30*length, width=2)
-        self.create_line(x, y, x+30, y, width=2)
-        self.create_line(x, y+30*length, x+30, y+30*length, width=2)
+            # inside lines
+            for i in range(1, length):
+                newX = x + 30 * i
+                self.create_line(newX, y, newX, y+30, width=1, tags=tags)
+        else:
+            # colored backdrop
+            self.create_rectangle(x, y, x+30, y+30*length, fill=color, tags=tags)
 
-        # inside lines
-        for i in range(1, length):
-            newY = y + 30 * i
-            self.create_line(x, newY, x+30, newY, width=1)
+            # border lines
+            self.create_line(x, y, x, y+30*length, width=2, tags=tags)
+            self.create_line(x+30, y, x+30, y+30*length, width=2, tags=tags)
+            self.create_line(x, y, x+30, y, width=2, tags=tags)
+            self.create_line(x, y+30*length, x+30, y+30*length, width=2, tags=tags)
+
+            # inside lines
+            for i in range(1, length):
+                newY = y + 30 * i
+                self.create_line(x, newY, x+30, newY, width=1, tags=tags)
+    
+    def drawShipObject(self, ship:Ship, color="gray", tags=None):
+        """
+        drawShipObject draws a Ship object on the primary board consisting of 30px by 30px squares
+
+        :param ship: the Ship object to be drawn
+        :param color: color of ship
+        :param tags: tags to be included in all shapes used to draw the ship
+        """
+        
+        x = self.PBOARD_X + self.PBOARD_SPACE * ship.spaces[0][0]
+        y = self.PBOARD_Y + self.PBOARD_SPACE * ship.spaces[0][1]
+        vertical = ship.direction[0] == 0
+        self.drawShip(x, y, ship.length, vertical, color=color, tags=tags)
 
     # inner frame classes
     class InfoSidebar(tk.Frame):
@@ -197,14 +225,31 @@ class GameScreen(tk.Canvas):
     
     ''' INPUT HANDLING FUNCTIONS '''
     def onKeyPress(self, event):
-        if self.turn == self.player:
-            if self.game_phase == "Setup":
+        if self.turn != self.player: return # ignore input during opponent's turn
+
+        if self.game_phase == "Setup":
+            if event.keysym == "Up":
                 pass
-            print("Key pressed!")
+            elif event.keysym == "Down":
+                pass
+            elif event.keysym == "Left":
+                pass
+            elif event.keysym == "Right":
+                pass
+            elif event.keysym == "space":
+                pass
+            elif event.keysym == "Return":
+                pass
+            print(event)
 
     def onClick(self, event):
-        if self.turn == self.player:
-            print(event.x)
+        if self.turn != self.player: return # ignore input during opponent's turn
+
+        print(event.x)
+    
+    ''' SETUP PHASE '''
+    def initializeSetupPhase(self):
+        self.shipToPlace = None
         
 
 # main game object
