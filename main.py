@@ -111,6 +111,13 @@ class GameScreen(tk.Canvas):
         self.create_line(550, 450, 550, 750, fill="green", width=1)
         self.create_line(550, 750, 250, 750, fill="green", width=1)
         self.create_line(250, 750, 250, 450, fill="green", width=1)
+
+        # enemy ships
+        self.drawHorizShip(250, 50, 5) #debug
+        self.drawVertShip(310, 110, 3) #debug
+
+        # friendly ships
+
     
     # draw a 10x10 grid with the NW corner at (x, y) of size x size using lines of color and thickness
     '''def drawGrid(self, x, y, size, color, thickness):
@@ -123,21 +130,39 @@ class GameScreen(tk.Canvas):
             realy = y + int(size * (i/10))
             self.create_line(x, realy, x+size, realy, fill=color, width=thickness)'''
     
-    # draw functions
-    def drawSidebar(self):
-        pass
+    # draw a horizontal ship of length with its NW corner at (x, y)
+    # each square of the ship is 30 x 30 pixels
+    def drawHorizShip(self, x, y, length):
+        # colored backdrop
+        self.create_rectangle(x, y, x+30*length, y+30, fill="gray")
 
-    def drawTargetingGrid(self):
-        pass
+        # border lines
+        self.create_line(x, y, x+30*length, y, width=2)
+        self.create_line(x, y+30, x+30*length, y+30, width=2)
+        self.create_line(x, y, x, y+30, width=2)
+        self.create_line(x+30*length, y, x+30*length, y+30, width=2)
 
-    def drawPrimaryGrid(self):
-        pass
+        # inside lines
+        for i in range(1, length):
+            newX = x + 30 * i
+            self.create_line(newX, y, newX, y+30, width=1)
 
-    def drawEnemyShips(self):
-        pass
+    # draw a horizontal ship of length with its NW corner at (x, y)
+    # each square of the ship is 30 x 30 pixels
+    def drawVertShip(self, x, y, length):
+        # colored backdrop
+        self.create_rectangle(x, y, x+30, y+30*length, fill="gray")
 
-    def drawMyShips(self):
-        pass
+        # border lines
+        self.create_line(x, y, x, y+30*length, width=2)
+        self.create_line(x+30, y, x+30, y+30*length, width=2)
+        self.create_line(x, y, x+30, y, width=2)
+        self.create_line(x, y+30*length, x+30, y+30*length, width=2)
+
+        # inside lines
+        for i in range(1, length):
+            newY = y + 30 * i
+            self.create_line(x, newY, x+30, newY, width=1)
 
     # inner frame classes
     '''class InfoSidebar(tk.Frame):
