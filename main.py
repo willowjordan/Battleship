@@ -76,20 +76,25 @@ class GameScreen(tk.Canvas):
         self.master = master
         self.player = player
         self.opponent = opponent
+        self.turn = player # whose turn it is
+        self.game_phase = "Setup"
 
         # create PhotoImages
         self.ocean = tk.PhotoImage(file="assets/ocean.png")
         self.radar = tk.PhotoImage(file="assets/radar.png")
 
         self.drawBackground()
+
+        self.master.bind("<Key>", self.onKeyPress)
+        self.bind("<Button-1>", self.onClick)
     
+    ''' DRAWING FUNCTIONS '''
     # draw things that won't change
     def drawBackground(self):
         # component backgrounds
-        self.create_rectangle(0, 0, 200, 800, fill="lightgray", width=0) # info sidebar
         self.create_image(200, 0, image=self.ocean, anchor="nw") # targeting and primary grid background
-        self.create_rectangle(600, 0, 800, 400, fill="lightgray", width=0) # enemy ships
-        self.create_rectangle(600, 400, 800, 800, fill="lightgray", width=0) # your ships
+        self.create_rectangle(600, 0, 800, 400, fill="lightblue", width=0) # enemy ships
+        self.create_rectangle(600, 400, 800, 800, fill="lightblue", width=0) # your ships
 
         # lines separating components
         self.create_line(200, 0, 200, 800, width=2)
@@ -112,23 +117,28 @@ class GameScreen(tk.Canvas):
         self.create_line(550, 750, 250, 750, fill="green", width=1)
         self.create_line(250, 750, 250, 450, fill="green", width=1)
 
+        # ship graveyard constants
+        PAD_X = 25
+        PAD_Y = 50
+
         # enemy ships
-        self.drawHorizShip(250, 50, 5) #debug
-        self.drawVertShip(310, 110, 3) #debug
+        self.create_text(700, 25, anchor="center", text="Enemy Ships", fill="black", font=("Helvetica", "16"))
+        self.drawHorizShip(600+PAD_X, 50, 5)
+        self.drawHorizShip(600+PAD_X, 50+PAD_Y, 4)
+        self.drawHorizShip(600+PAD_X, 50+2*PAD_Y, 3)
+        self.drawHorizShip(600+PAD_X, 50+3*PAD_Y, 3)
+        self.drawHorizShip(600+PAD_X, 50+4*PAD_Y, 2)
 
         # friendly ships
+        self.create_text(700, 425, anchor="center", text="Your Ships", fill="black", font=("Helvetica", "16"))
+        self.drawHorizShip(600+PAD_X, 450, 5)
+        self.drawHorizShip(600+PAD_X, 450+PAD_Y, 4)
+        self.drawHorizShip(600+PAD_X, 450+2*PAD_Y, 3)
+        self.drawHorizShip(600+PAD_X, 450+3*PAD_Y, 3)
+        self.drawHorizShip(600+PAD_X, 450+4*PAD_Y, 2)
 
-    
-    # draw a 10x10 grid with the NW corner at (x, y) of size x size using lines of color and thickness
-    '''def drawGrid(self, x, y, size, color, thickness):
-        # vert
-        for i in range(0, 11):
-            realx = x + int(size * (i/10))
-            self.create_line(realx, y, realx, y+size, fill=color, width=thickness)
-        # horiz
-        for i in range(0, 11):
-            realy = y + int(size * (i/10))
-            self.create_line(x, realy, x+size, realy, fill=color, width=thickness)'''
+        self.sidebar = self.InfoSidebar(self)
+        self.create_window(0, 0, width=200, height=800, anchor="nw", window=self.sidebar)
     
     # draw a horizontal ship of length with its NW corner at (x, y)
     # each square of the ship is 30 x 30 pixels
@@ -165,31 +175,36 @@ class GameScreen(tk.Canvas):
             self.create_line(x, newY, x+30, newY, width=1)
 
     # inner frame classes
-    '''class InfoSidebar(tk.Frame):
+    class InfoSidebar(tk.Frame):
         def __init__(self, master):
-            super().__init__(bg="gray")
+            super().__init__(bg="lightblue")
             self.master = master
+            self.labels:dict[str, tk.Label] = {}
 
-    class TargetingGrid(tk.Frame):
-        def __init__(self, master):
-            super().__init__(bg="red")
-            self.master = master
-            self.player = master.player
+            self.labels["turninfo"] = tk.Label(self, text="Your Turn", bg="lightblue", font=("Helvetica", "16"))
+            self.labels["instructions"] = tk.Label(self, text="Place Your Ships\nUse arrow keys to move the ship\nPress Space to rotate\nPress Enter to confirm", bg="lightblue")
+            self.labels["lobbyinfoheader"] = tk.Label(self, text="Lobby Info:", bg="lightblue", font=("Helvetica", "16"))
+            self.labels["lobbyinfo"] = tk.Label(self, text="Game Type: Local", bg="lightblue")
+            self.labels["opponentinfo"] = tk.Label(self, text="Opponent: CPU", bg="lightblue")
 
-    class PrimaryGrid(tk.Frame):
-        def __init__(self, master):
-            super().__init__(bg="blue")
-            self.master = master
+            for lb in self.labels.values():
+                lb.pack()
+        
+        # change the turn info label to display newTxt
+        def changeLabel(self, labelname, newTxt):
+            self.labels[labelname].configure(text=newTxt)
+            self.labels[labelname].update()
+    
+    ''' INPUT HANDLING FUNCTIONS '''
+    def onKeyPress(self, event):
+        if self.turn == self.player:
+            if self.game_phase == "Setup":
+                pass
+            print("Key pressed!")
 
-    class EnemyShips(tk.Frame):
-        def __init__(self, master):
-            super().__init__(bg="gray")
-            self.master = master
-
-    class MyShips(tk.Frame):
-        def __init__(self, master):
-            super().__init__(bg="lightgray")
-            self.master = master'''
+    def onClick(self, event):
+        if self.turn == self.player:
+            print(event.x)
         
 
 # main game object
