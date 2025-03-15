@@ -223,19 +223,27 @@ class GameScreen(tk.Canvas):
             self.labels[labelname].configure(text=newTxt)
             self.labels[labelname].update()
     
+    ''' SETUP PHASE '''
+    def initializeSetupPhase(self):
+        self.shipToPlace = Ship([0, 0], 5, [1, 0])
+        self.drawShipObject(self.shipToPlace, "lightgray", "shipToPlace")
+    
+    # TODO: add out of bounds checking/ ship in the way checking
+    def moveSetupShip(self, transVector):
+        self.shipToPlace.translate(transVector)
+        self.delete("shipToPlace")
+        self.drawShipObject(self.shipToPlace, "lightgray", "shipToPlace")
+            
+    
     ''' INPUT HANDLING FUNCTIONS '''
     def onKeyPress(self, event):
         if self.turn != self.player: return # ignore input during opponent's turn
 
         if self.game_phase == "Setup":
-            if event.keysym == "Up":
-                pass
-            elif event.keysym == "Down":
-                pass
-            elif event.keysym == "Left":
-                pass
-            elif event.keysym == "Right":
-                pass
+            if event.keysym == "Up": self.moveSetupShip([0, -1])
+            elif event.keysym == "Down": self.moveSetupShip([0, 1])
+            elif event.keysym == "Left": self.moveSetupShip([-1, 0])
+            elif event.keysym == "Right": self.moveSetupShip([1, 0])
             elif event.keysym == "space":
                 pass
             elif event.keysym == "Return":
@@ -246,10 +254,7 @@ class GameScreen(tk.Canvas):
         if self.turn != self.player: return # ignore input during opponent's turn
 
         print(event.x)
-    
-    ''' SETUP PHASE '''
-    def initializeSetupPhase(self):
-        self.shipToPlace = None
+        
         
 
 # main game object
