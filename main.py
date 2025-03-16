@@ -1,4 +1,6 @@
 import tkinter as tk
+import copy
+
 from battleshiplib import *
 
 class TitleScreen(tk.Frame):
@@ -93,7 +95,7 @@ class GameScreen(tk.Canvas):
         self.master.bind("<Key>", self.onKeyPress)
         self.bind("<Button-1>", self.onClick)
 
-
+        self.initializeSetupPhase()
     
     ''' DRAWING FUNCTIONS '''
     # draw things that won't change
@@ -197,8 +199,8 @@ class GameScreen(tk.Canvas):
         :param tags: tags to be included in all shapes used to draw the ship
         """
         
-        x = self.PBOARD_X + self.PBOARD_SPACE * ship.spaces[0][0]
-        y = self.PBOARD_Y + self.PBOARD_SPACE * ship.spaces[0][1]
+        x = self.PBOARD_X + self.PBOARD_SPACE * (ship.spaces[0][0] - 1)
+        y = self.PBOARD_Y + self.PBOARD_SPACE * (ship.spaces[0][1] - 1)
         vertical = ship.direction[0] == 0
         self.drawShip(x, y, ship.length, vertical, color=color, tags=tags)
 
@@ -209,7 +211,7 @@ class GameScreen(tk.Canvas):
             self.master = master
             self.labels:dict[str, tk.Label] = {}
 
-            self.labels["turninfo"] = tk.Label(self, text="Your Turn", bg="lightblue", font=("Helvetica", "16"))
+            self.labels["turninfo"] = tk.Label(self, text="Setup Phase", bg="lightblue", font=("Helvetica", "16"))
             self.labels["instructions"] = tk.Label(self, text="Place Your Ships\nUse arrow keys to move the ship\nPress Space to rotate\nPress Enter to confirm", bg="lightblue")
             self.labels["lobbyinfoheader"] = tk.Label(self, text="Lobby Info:", bg="lightblue", font=("Helvetica", "16"))
             self.labels["lobbyinfo"] = tk.Label(self, text="Game Type: Local", bg="lightblue")
@@ -225,37 +227,90 @@ class GameScreen(tk.Canvas):
     
     ''' SETUP PHASE '''
     def initializeSetupPhase(self):
-        self.shipToPlace = Ship([0, 0], 5, [1, 0])
-        self.drawShipObject(self.shipToPlace, "lightgray", "shipToPlace")
+        self.shipsToPlace = [Ship((0, 0), 5, (1, 0), "Carrier"), Ship((0, 0), 4, (1, 0), "Battleship"), Ship((0, 0), 3, (1, 0), "Destroyer"), Ship((0, 0), 3, (1, 0), "Submarine"), Ship((0, 0), 2, (1, 0), "Patrol Boat")]
+        self.getNextShip()
     
-    # TODO: add out of bounds checking/ ship in the way checking
+    def getNextShip(self):
+        # if list is empty, this will raise an exception we can handle elsewhere
+        self.nextShip = self.shipsToPlace[0]
+        self.shipsToPlace.pop(0)
+
+        #TODO: maybe optimize this?
+        # find an empty space to place the ship in (to start)
+        valid = self.player.board.isShipValid(self.nextShip)
+        while valid != 0:
+            if valid == 2: # advance horizontally
+                self.nextShip.translate((1, 0))
+            else: # out of bounds, reset horizontal and advance vertically
+                self.nextShip.translate((1-self.nextShip.pos[0], 1))
+            valid = self.player.board.isShipValid(self.nextShip)
+        
+        self.drawShipObject(self.nextShip, "lightgray", "shipToPlace")
+    
+    # move ship
     def moveSetupShip(self, transVector):
-        self.shipToPlace.translate(transVector)
+        """
+        moveSetupShip moves the setup ship by the specified amount. If a ship is in the way, it moves the setup ship through the ship to the next open space in that direction.
+        If there's no open space in that direction, it doesn't make the move.
+
+        :param transVector: The vector by which to move the ship - [dx, dy]
+        """
+        # check if translation is valid
+        translated = copy.deepcopy(self.nextShip)
+        translated.translate(transVector)
+        valid = self.player.board.isShipValid(translated)
+        while valid != 0:
+            if valid == 1: return # now out of bounds, don't move ship
+            translated.translate(transVector) # if inside another ship, move further and try again
+            valid = self.player.board.isShipValid(translated)
+        self.nextShip = translated
         self.delete("shipToPlace")
-        self.drawShipObject(self.shipToPlace, "lightgray", "shipToPlace")
-            
+        self.drawShipObject(self.nextShip, "lightgray", "shipToPlace")
+    
+    # attempt to rotate the startup ship 90 degrees clockwise
+    # if there's something in the way or the rotation would place the ship out of bounds, don't rotate
+    def rotateSetupShip(self):
+        rotated = copy.deepcopy(self.nextShip)
+        rotated.rotate()
+        if self.player.board.isShipValid(rotated) != 0: return
+        self.nextShip = rotated
+        self.delete("shipToPlace")
+        self.drawShipObject(self.nextShip, "lightgray", "shipToPlace")
+    
+    # place setup ship on board and either queue next ship or start game
+    def confirmSetupShip(self):
+        self.delete("shipToPlace")
+        self.player.board.addShip(self.nextShip)
+        self.drawShipObject(self.nextShip, tags=self.nextShip.name)
+        try:
+            self.getNextShip()
+        except: # out of ships to place, so start the game
+            self.startGame()
+    
+    ''' MAIN GAME FUNCTIONS '''
+    def startGame(self):
+        self.opponent.sendConfirmation()
+        self.opponent.getConfirmation() # wait for other player to be ready
+        self.game_phase = "Main"
+        self.turn = random.choice([self.player, self.opponent])
+        
     
     ''' INPUT HANDLING FUNCTIONS '''
     def onKeyPress(self, event):
         if self.turn != self.player: return # ignore input during opponent's turn
 
         if self.game_phase == "Setup":
-            if event.keysym == "Up": self.moveSetupShip([0, -1])
-            elif event.keysym == "Down": self.moveSetupShip([0, 1])
-            elif event.keysym == "Left": self.moveSetupShip([-1, 0])
-            elif event.keysym == "Right": self.moveSetupShip([1, 0])
-            elif event.keysym == "space":
-                pass
-            elif event.keysym == "Return":
-                pass
-            print(event)
+            if event.keysym == "Up": self.moveSetupShip((0, -1))
+            elif event.keysym == "Down": self.moveSetupShip((0, 1))
+            elif event.keysym == "Left": self.moveSetupShip((-1, 0))
+            elif event.keysym == "Right": self.moveSetupShip((1, 0))
+            elif event.keysym == "space": self.rotateSetupShip()
+            elif event.keysym == "Return": self.confirmSetupShip()
 
     def onClick(self, event):
         if self.turn != self.player: return # ignore input during opponent's turn
 
-        print(event.x)
-        
-        
+        #print(event.x)
 
 # main game object
 class Game(tk.Tk):
