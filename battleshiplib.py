@@ -1,4 +1,11 @@
 import random
+from enum import Enum
+import time
+
+class Result(Enum):
+    MISS = 0
+    HIT = 1
+    SUNK = 2
 
 class Ship():
     # pos:[int, int] - position of the origin of the ship
@@ -45,7 +52,7 @@ class Ship():
         self.generateSpaces()
     
     def isSunk(self):
-        return len(self.spaces == 0)
+        return len(self.spaces) == 0
 
 class Board():
     def __init__(self, ships=None):
@@ -73,18 +80,25 @@ class Board():
         for space in ship.spaces:
             self.occupiedspaces.append(space)
 
+    # add a shot to targeting board
+    def addMyShot(self, pos, result):
+        if pos in self.myshots:
+            raise(ValueError, "There is already a shot there!")
+        self.myshots.append(pos + (result,))
+
     def addEnemyShot(self, pos):
         # error checking
         if pos in self.enemyshots:
             raise(ValueError, "There is already an enemy shot there!")
         
-        for ship in self.ships:
+        for ship in self.ships.values():
             if pos in ship.spaces:
-                self.enemyshots.append(pos + True)
+                self.enemyshots.append(pos + (True,)) # hit
                 ship.spaces.remove(pos)
-                if ship.isSunk(): return 1 # tells calling function to check victory conditions
-                else: return 0
-        self.enemyshots.append(pos + False) # miss
+                if ship.isSunk(): return Result.SUNK # tells calling function to check victory conditions
+                else: return Result.HIT
+        self.enemyshots.append(pos + (False,)) # miss
+        return Result.MISS
 
     def allShipsSunk(self):
         for ship in self.ships:
@@ -106,18 +120,11 @@ class Player():
     def __init__(self):
         self.board = Board()
     
-    def sendConfirmation(self):
-        pass
-
-    def getConfirmation(self):
-        pass
-    
-    def getMove(self):
-        pass
-
-class LocalPlayer(Player):
-    def __init__(self):
-        super().__init__()
+    def sendConfirmation(self): pass
+    def getConfirmation(self): pass
+    def sendMove(self, move:tuple): pass
+    def getMove(self): pass
+    def sendMoveResult(self, result:int): pass
 
 class RemotePlayer(Player):
     def __init__(self):
@@ -142,7 +149,9 @@ class ComputerPlayer(Player):
     
     # wait for confirmation that other player is ready
     # in this case, computer sets up its board and signals that it's ready
+    # TODO: fix infinite loop bug here
     def getConfirmation(self):
+        time.sleep(random.random() * 5) # add random time delay to make player think computer is running some super fancy algorithm
         b = self.board
         shipsToPlace = [(5, "Carrier"), (4, "Battleship"), (3, "Destroyer"), (3, "Submarine"), (2, "Patrol Boat")]
         while len(shipsToPlace) > 0:
@@ -155,6 +164,23 @@ class ComputerPlayer(Player):
                 nextShip = Ship(pos, nextShipInfo[0], direction, nextShipInfo[1])
                 valid = b.isShipValid(nextShip)
             b.addShip(nextShip)
-        
         return True
+
+    # send move to opponent
+    # returns the result of the move
+    def sendMove(self, move:tuple):
+        return self.board.addEnemyShot(move)
+    
+    def getMove(self):
+        time.sleep(random.random() * 5) # add random time delay to make player think computer is running some super fancy algorithm
+        b = self.board
+        valid = False
+        while not valid:
+            move = (random.randint(b.MIN_X, b.MAX_X), random.randint(b.MIN_Y, b.MAX_Y))
+            if move not in b.myshots:
+                valid = True
+        return move
+    
+    def sendMoveResult(self, move:tuple, result:int):
+        self.board.addMyShot(move, result)
         
