@@ -7,6 +7,15 @@ class Result(Enum):
     HIT = 1
     SUNK = 2
 
+class DuplicateShotError(Exception):
+    """Exception raised when a player or opponent attempts to fire a shot in the same place twice."""
+    def __init__(self, message):
+        self.message = message
+    
+    def __str__(self):
+        return self.message
+
+
 class Ship():
     # pos:[int, int] - position of the origin of the ship
     # l:int - length
@@ -58,11 +67,11 @@ class Board():
     def __init__(self, ships=None):
         self.ships = {}
         # shots the enemy has fired onto your grid
-        # format - (xpos:int, ypos:int, hit:bool)
-        self.enemyshots = []
+        # format - (xpos:int, ypos:int) => hit:bool
+        self.enemyshots = {}
         # shots you have fired onto the enemy's grid
-        # format - (xpos:int, ypos:int, hit:bool)
-        self.myshots = []
+        # format - (xpos:int, ypos:int) => hit:bool
+        self.myshots = {}
         self.occupiedspaces = []
 
         # constants
@@ -83,21 +92,21 @@ class Board():
     # add a shot to targeting board
     def addMyShot(self, pos, result):
         if pos in self.myshots:
-            raise(ValueError, "There is already a shot there!")
-        self.myshots.append(pos + (result,))
+            raise(DuplicateShotError, "There is already a shot there!")
+        self.myshots[pos] = result
 
     def addEnemyShot(self, pos):
         # error checking
         if pos in self.enemyshots:
-            raise(ValueError, "There is already an enemy shot there!")
+            raise(DuplicateShotError, "There is already an enemy shot there!")
         
         for ship in self.ships.values():
             if pos in ship.spaces:
-                self.enemyshots.append(pos + (True,)) # hit
+                self.enemyshots[pos] = True # hit
                 ship.spaces.remove(pos)
                 if ship.isSunk(): return Result.SUNK # tells calling function to check victory conditions
                 else: return Result.HIT
-        self.enemyshots.append(pos + (False,)) # miss
+        self.enemyshots[pos] = False # miss
         return Result.MISS
 
     def allShipsSunk(self):
@@ -151,7 +160,7 @@ class ComputerPlayer(Player):
     # in this case, computer sets up its board and signals that it's ready
     # TODO: fix infinite loop bug here
     def getConfirmation(self):
-        time.sleep(random.random() * 5) # add random time delay to make player think computer is running some super fancy algorithm
+        #time.sleep(random.random() * 5) # add random time delay to make player think computer is running some super fancy algorithm
         b = self.board
         shipsToPlace = [(5, "Carrier"), (4, "Battleship"), (3, "Destroyer"), (3, "Submarine"), (2, "Patrol Boat")]
         while len(shipsToPlace) > 0:
@@ -172,7 +181,7 @@ class ComputerPlayer(Player):
         return self.board.addEnemyShot(move)
     
     def getMove(self):
-        time.sleep(random.random() * 5) # add random time delay to make player think computer is running some super fancy algorithm
+        #time.sleep(random.random() * 5) # add random time delay to make player think computer is running some super fancy algorithm
         b = self.board
         valid = False
         while not valid:

@@ -1,3 +1,16 @@
+"""
+BUGS:
+    - Computer always seems to place a ship in top left corner
+    - Player can fire shots outside of grid
+    - Player can fire shots in the same place multiple times
+    - Infinite loop when computer is generating ships?
+FEATURES TO ADD:
+    - Win/loss detection
+    - Change instruction panel based on whose turn it is
+    - Change instruction panel based on whether the last move was a hit or not
+    - Victory/defeat screen with option to return to main menu or quit
+"""
+
 import tkinter as tk
 import copy
 
@@ -323,10 +336,14 @@ class GameScreen(tk.Canvas):
     
     # TODO: make this update the ship graveyard
     def handlePlayerMove(self, move):
-        result = self.opponent.sendMove(move)
-        self.board.addMyShot(move, result)
-        self.drawTargetingShot(move, result)
-        self.changeTurns()
+        try:
+            result = self.opponent.sendMove(move)
+            self.board.addMyShot(move, result)
+            self.drawTargetingShot(move, result)
+            if result == Result.SUNK: self.checkVictory()
+            self.changeTurns()
+        except DuplicateShotError:
+            pass # do nothing if player tries to click the same spot twice
     
     # TODO: make this update the ship graveyard
     # get move from opponent and update information accordingly, then do end of turn checks
