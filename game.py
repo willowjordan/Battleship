@@ -1,11 +1,11 @@
 """
 BUGS:
+    - make backgrounds consistent in menu screen
     - 
 FEATURES TO ADD:
-    - Win/loss detection
-    - Change instruction panel based on whose turn it is
-    - Change instruction panel based on whether the last move was a hit or not
-    - Victory/defeat screen with option to return to main menu or quit
+    - make smarter CPU
+    - add settings screen before playing against CPU
+    - implement multiplayer
 """
 
 import tkinter as tk
@@ -42,7 +42,7 @@ class TitleScreen(tk.Frame):
         self.master.display(HostScreen(self.master))
     
     def join_screen(self):
-        pass #TODO: complete this
+        self.master.display(JoinScreen(self.master))
 
 class HostScreen(tk.Frame):
     def __init__(self, master):
@@ -69,10 +69,17 @@ class HostScreen(tk.Frame):
         self.backbutton.grid(row=5, column=1, columnspan=2)
     
     def createLobby(self):
-        raise NotImplementedError("Create lobby function is not implemented yet")
+        self.master.display(LobbyScreen(self.master))
     
     def back(self):
         self.master.display(TitleScreen(self.master))
+
+# TODO: implement
+class LobbyScreen(tk.Frame):
+    def __init__(self, master):
+        super().__init__()
+        self.master = master
+        raise NotImplementedError("Lobby screen is not implemented yet")
 
 # TODO: implement
 class JoinScreen(tk.Frame):
