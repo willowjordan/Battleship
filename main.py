@@ -1,9 +1,6 @@
 """
 BUGS:
-    - Computer always seems to place a ship in top left corner
-    - Player can fire shots outside of grid
-    - Player can fire shots in the same place multiple times
-    - Infinite loop when computer is generating ships?
+    - 
 FEATURES TO ADD:
     - Win/loss detection
     - Change instruction panel based on whose turn it is
@@ -84,8 +81,8 @@ class JoinScreen(tk.Frame):
         super().__init__()
         self.master = master
 
-# container representing the main interactive area (primary grid and targeting grid)
 class GameScreen(tk.Canvas):
+    """Container representing the main interactive area (primary grid and targeting grid)"""
     def __init__(self, master, opponent):
         super().__init__(master, width=800, height=800, bd=0, highlightthickness=0, relief='ridge')
         self.master = master
@@ -114,9 +111,9 @@ class GameScreen(tk.Canvas):
 
         self.initializeSetupPhase()
     
-    ''' DRAWING FUNCTIONS '''
-    # draw things that won't change
+    ### DRAWING FUNCTIONS ###
     def drawBackground(self):
+        """Draw things that won't change"""
         # component backgrounds
         self.create_image(200, 0, image=self.ocean, anchor="nw") # targeting and primary grid background
         self.create_rectangle(600, 0, 800, 400, fill="lightblue", width=0) # enemy ships
@@ -235,7 +232,6 @@ class GameScreen(tk.Canvas):
         y = self.TBOARD_Y + self.TBOARD_SPACE * (pos[1] - 1)
         self.create_oval(x, y, x+self.TBOARD_SPACE, y+self.TBOARD_SPACE, fill=clr, width=0)
 
-    # inner frame classes
     class InfoSidebar(tk.Frame):
         def __init__(self, master):
             super().__init__(bg="lightblue")
@@ -251,10 +247,14 @@ class GameScreen(tk.Canvas):
             for lb in self.labels.values():
                 lb.pack()
         
-        # change the turn info label to display newTxt
         def changeLabel(self, labelname, newTxt):
+            """Change the text of label with labelname to display newTxt"""
             self.labels[labelname].configure(text=newTxt)
             self.labels[labelname].update()
+        
+        def getLabelText(self, labelname):
+            return self.labels[labelname].cget("text")
+
     
     ''' SETUP PHASE '''
     def initializeSetupPhase(self):
@@ -278,7 +278,6 @@ class GameScreen(tk.Canvas):
         
         self.drawShipObject(self.nextShip, "lightgray", "shipToPlace")
     
-    # move ship
     def moveSetupShip(self, transVector):
         """
         moveSetupShip moves the setup ship by the specified amount. If a ship is in the way, it moves the setup ship through the ship to the next open space in that direction.
@@ -297,10 +296,12 @@ class GameScreen(tk.Canvas):
         self.nextShip = translated
         self.delete("shipToPlace")
         self.drawShipObject(self.nextShip, "lightgray", "shipToPlace")
-    
-    # attempt to rotate the startup ship 90 degrees clockwise
-    # if there's something in the way or the rotation would place the ship out of bounds, don't rotate
+
     def rotateSetupShip(self):
+        """ 
+        Attempt to rotate the startup ship 90 degrees clockwise.
+        If there's something in the way or the rotation would place the ship out of bounds, don't rotate.
+        """
         rotated = copy.deepcopy(self.nextShip)
         rotated.rotate()
         if self.board.isShipValid(rotated) != 0: return
@@ -308,8 +309,8 @@ class GameScreen(tk.Canvas):
         self.delete("shipToPlace")
         self.drawShipObject(self.nextShip, "lightgray", "shipToPlace")
     
-    # place setup ship on board and either queue next ship or start game
     def confirmSetupShip(self):
+        """Place setup ship on board and either queue next ship or start game"""
         self.delete("shipToPlace")
         self.board.addShip(self.nextShip)
         self.drawShipObject(self.nextShip, tags=self.nextShip.name)
@@ -346,8 +347,8 @@ class GameScreen(tk.Canvas):
             pass # do nothing if player tries to click the same spot twice
     
     # TODO: make this update the ship graveyard
-    # get move from opponent and update information accordingly, then do end of turn checks
     def handleOpponentMove(self):
+        """Get move from opponent and update information accordingly, then do end of turn checks"""
         move = self.opponent.getMove()
         result = self.board.addEnemyShot(move)
         self.drawPrimaryShot(move, result) # add peg for move
@@ -355,12 +356,11 @@ class GameScreen(tk.Canvas):
         if result == Result.SUNK: self.checkVictory()
         self.changeTurns()
     
-    # check to see if either player has won
     def checkVictory(self):
+        """check to see if either player has won"""
         pass #TODO: implement
-
     
-    ''' INPUT HANDLING FUNCTIONS '''
+    ### INPUT HANDLING FUNCTIONS ###
     def onKeyPress(self, event):
         if not self.myturn: return # ignore input during opponent's turn
 
@@ -372,7 +372,8 @@ class GameScreen(tk.Canvas):
             elif event.keysym == "space": self.rotateSetupShip()
             elif event.keysym == "Return": self.confirmSetupShip()
 
-    def onClick(self, event):
+    def onClick(self, event:tk.Event):
+        print(f"Click at ({event.x}, {event.y})")
         if not self.myturn: return # ignore input during opponent's turn
 
         if self.game_phase == "Main":
@@ -382,8 +383,9 @@ class GameScreen(tk.Canvas):
             if event.y < self.TBOARD_Y: return
             if event.y > self.TBOARD_Y + 10 * self.TBOARD_SPACE: return
 
-            x = (int(event.x) - self.TBOARD_X) // 30 + 1
-            y = (int(event.y) - self.TBOARD_Y) // 30 + 1
+            print("Calling handlePlayerMove")
+            x = (event.x - self.TBOARD_X - 1) // self.TBOARD_SPACE + 1
+            y = (event.y - self.TBOARD_Y - 1) // self.TBOARD_SPACE + 1
             self.handlePlayerMove((x, y))
 
 # main game object
@@ -409,8 +411,8 @@ class Game(tk.Tk):
         js = JoinScreen(self)
         js.pack()
 
-    # destroy current frame and display next
     def display_next(self):
+        """Destroy current frame and display next"""
         if self.current_screen is not None:
             self.current_screen.destroy()
         self.current_screen = self.next_screen
