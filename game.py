@@ -15,14 +15,15 @@ from battleshiplib import *
 
 class TitleScreen(tk.Frame):
     def __init__(self, master):
-        super().__init__()
+        super().__init__(background="lightblue")
         self.master = master
+        master.configure(background = "lightblue")
 
         PAD = 10
         BUTTONWIDTH = 40
         BUTTONHEIGHT = 7
 
-        self.label = tk.Label(self, text="Battleship", font=('Arial', 18))
+        self.label = tk.Label(self, text="Battleship", font=('Arial', 18), background="lightblue")
         self.localbutton = tk.Button(self, command=self.local_game, text="Play VS Computer", width=BUTTONWIDTH, height=BUTTONHEIGHT)
         self.hostbutton = tk.Button(self, command=self.host_screen, text="Host Game", width=BUTTONWIDTH, height=BUTTONHEIGHT)
         self.joinbutton = tk.Button(self, command=self.join_screen, text="Join Game", width=BUTTONWIDTH, height=BUTTONHEIGHT)
@@ -35,12 +36,10 @@ class TitleScreen(tk.Frame):
         self.exitbutton.pack(pady=PAD)
     
     def local_game(self):
-        self.master.next_screen = GameScreen(self.master, ComputerPlayer())
-        self.master.display_next()
+        self.master.display(GameScreen(self.master, ComputerPlayer()))
     
     def host_screen(self):
-        self.master.next_screen = HostScreen(self.master)
-        self.master.display_next()
+        self.master.display(HostScreen(self.master))
     
     def join_screen(self):
         pass #TODO: complete this
@@ -70,16 +69,17 @@ class HostScreen(tk.Frame):
         self.backbutton.grid(row=5, column=1, columnspan=2)
     
     def createLobby(self):
-        pass #TODO: complete this
+        raise NotImplementedError("Create lobby function is not implemented yet")
     
     def back(self):
-        self.master.next_screen = TitleScreen(self.master)
-        self.master.display_next()
+        self.master.display(TitleScreen(self.master))
 
+# TODO: implement
 class JoinScreen(tk.Frame):
     def __init__(self, master):
         super().__init__()
         self.master = master
+        raise NotImplementedError("Join screen is not implemented yet")
 
 class GameScreen(tk.Canvas):
     """Container representing the main interactive area (primary grid and targeting grid)"""
@@ -218,19 +218,45 @@ class GameScreen(tk.Canvas):
         vertical = ship.direction[0] == 0
         self.drawShip(x, y, ship.length, vertical, color=color, tags=tags)
     
-    def drawPrimaryShot(self, pos, result):
+    def drawShot(self, opponent:bool, pos, result):
+        """
+        Draw a shot on the applicable board.
+
+        :param opponent: true if shot is by opponent (primary board), false if by player (targeting board)
+        :param pos: tuple(int, int) position of the shot in board coordinates (1-10, 1-10)
+        :param result: result of the shot (will determine color)
+        """
         if result == Result.MISS: clr = "white"
         else: clr = "red"
-        x = self.PBOARD_X + self.PBOARD_SPACE * (pos[0] - 1)
-        y = self.PBOARD_Y + self.PBOARD_SPACE * (pos[1] - 1)
-        self.create_oval(x, y, x+self.PBOARD_SPACE, y+self.PBOARD_SPACE, fill=clr, width=0)
+        if opponent:
+            x = self.PBOARD_X + self.PBOARD_SPACE * (pos[0] - 1)
+            y = self.PBOARD_Y + self.PBOARD_SPACE * (pos[1] - 1)
+            self.create_oval(x, y, x+self.PBOARD_SPACE, y+self.PBOARD_SPACE, fill=clr, width=0)
+        else:
+            x = self.TBOARD_X + self.TBOARD_SPACE * (pos[0] - 1)
+            y = self.TBOARD_Y + self.TBOARD_SPACE * (pos[1] - 1)
+            self.create_oval(x, y, x+self.TBOARD_SPACE, y+self.TBOARD_SPACE, fill=clr, width=0)
+
+    def drawSunk(self, opponent:bool, shipName):
+        """
+        Draw a strikethrough for the applicable sunk ship in the ship display panel
+
+        :param opponent: true if opponent's ship, false if player's
+        :param shipName: name of ship to draw strikethrough through
+        """
+        x = 625
+        pad = 10
+        if opponent: y = 65
+        else: y = 465
         
-    def drawTargetingShot(self, pos, result):
-        if result == Result.MISS: clr = "white"
-        else: clr = "red"
-        x = self.TBOARD_X + self.TBOARD_SPACE * (pos[0] - 1)
-        y = self.TBOARD_Y + self.TBOARD_SPACE * (pos[1] - 1)
-        self.create_oval(x, y, x+self.TBOARD_SPACE, y+self.TBOARD_SPACE, fill=clr, width=0)
+        if shipName == "Carrier": length = 5*30; y += 0
+        elif shipName == "Battleship": length = 4*30; y += 50
+        elif shipName == "Destroyer": length = 3*30; y += 100
+        elif shipName == "Submarine": length = 3*30; y += 150
+        elif shipName == "Patrol Boat": length = 2*30; y += 200
+        else: raise ValueError(f"Unknown ship name \"{shipName}\"")
+
+        self.create_line(x-pad, y, x+length+pad, y, fill="red", width=3)
 
     class InfoSidebar(tk.Frame):
         def __init__(self, master):
@@ -246,6 +272,9 @@ class GameScreen(tk.Canvas):
 
             for lb in self.labels.values():
                 lb.pack()
+            
+            self.quitbutton = tk.Button(self, text="Quit", command=self.quit, width=15, height=2)
+            self.quitbutton.pack(side="bottom", pady=20)
         
         def changeLabel(self, labelname, newTxt):
             """Change the text of label with labelname to display newTxt"""
@@ -254,9 +283,11 @@ class GameScreen(tk.Canvas):
         
         def getLabelText(self, labelname):
             return self.labels[labelname].cget("text")
-
+        
+        def quit(self):
+            self.master.master.display(TitleScreen(self.master.master))
     
-    ''' SETUP PHASE '''
+    ### SETUP PHASE ###
     def initializeSetupPhase(self):
         self.shipsToPlace = [Ship((0, 0), 5, (1, 0), "Carrier"), Ship((0, 0), 4, (1, 0), "Battleship"), Ship((0, 0), 3, (1, 0), "Destroyer"), Ship((0, 0), 3, (1, 0), "Submarine"), Ship((0, 0), 2, (1, 0), "Patrol Boat")]
         self.getNextShip()
@@ -319,7 +350,7 @@ class GameScreen(tk.Canvas):
         except: # out of ships to place, so start the game
             self.startGame()
     
-    ''' MAIN GAME FUNCTIONS '''
+    ### MAIN GAME FUNCTIONS ###
     def startGame(self):
         self.opponent.sendConfirmation()
         self.opponent.getConfirmation() # wait for other player to be ready
@@ -331,34 +362,38 @@ class GameScreen(tk.Canvas):
         self.myturn = not self.myturn
         if self.myturn:
             self.sidebar.changeLabel("turninfo", "Your Turn")
+            self.sidebar.changeLabel("instructions", "Click on a space on your\ntargeting board to fire a shot")
         else:
             self.sidebar.changeLabel("turninfo", "Opponent's Turn")
+            self.sidebar.changeLabel("instructions", "Opponent is thinking...")
             self.handleOpponentMove()
     
-    # TODO: make this update the ship graveyard
     def handlePlayerMove(self, move):
         try:
             result = self.opponent.sendMove(move)
             self.board.addMyShot(move, result)
-            self.drawTargetingShot(move, result)
-            if result == Result.SUNK: self.checkVictory()
+            self.drawShot(False, move, result)
+            if result == Result.SUNK:
+                self.drawSunk(True, self.opponent.board.lastShipSunk().name)
+                self.checkVictory()
             self.changeTurns()
-        except DuplicateShotError:
-            pass # do nothing if player tries to click the same spot twice
+        except DuplicateShotError: pass # do nothing if player tries to click the same spot twice
     
-    # TODO: make this update the ship graveyard
     def handleOpponentMove(self):
-        """Get move from opponent and update information accordingly, then do end of turn checks"""
+        """Get move from opponent and update information accordingly, then do end of turn checks."""
         move = self.opponent.getMove()
         result = self.board.addEnemyShot(move)
-        self.drawPrimaryShot(move, result) # add peg for move
+        self.drawShot(True, move, result) # add peg for move
         self.opponent.sendMoveResult(move, result)
-        if result == Result.SUNK: self.checkVictory()
+        if result == Result.SUNK:
+            self.drawSunk(False, self.opponent.board.lastShipSunk().name)
+            self.checkVictory()
         self.changeTurns()
     
     def checkVictory(self):
-        """check to see if either player has won"""
-        pass #TODO: implement
+        """Check to see if either player has won. If so, go to victory screen."""
+        if len(self.board.aliveShips) == 0: self.master.display(VictoryScreen(self.master, "Opponent"))
+        if len(self.opponent.board.aliveShips) == 0: self.master.display(VictoryScreen(self.master, "Player"))
     
     ### INPUT HANDLING FUNCTIONS ###
     def onKeyPress(self, event):
@@ -373,7 +408,7 @@ class GameScreen(tk.Canvas):
             elif event.keysym == "Return": self.confirmSetupShip()
 
     def onClick(self, event:tk.Event):
-        print(f"Click at ({event.x}, {event.y})")
+        print(f"Click at {(event.x, event.y)}")
         if not self.myturn: return # ignore input during opponent's turn
 
         if self.game_phase == "Main":
@@ -383,10 +418,35 @@ class GameScreen(tk.Canvas):
             if event.y < self.TBOARD_Y: return
             if event.y > self.TBOARD_Y + 10 * self.TBOARD_SPACE: return
 
-            print("Calling handlePlayerMove")
             x = (event.x - self.TBOARD_X - 1) // self.TBOARD_SPACE + 1
             y = (event.y - self.TBOARD_Y - 1) // self.TBOARD_SPACE + 1
             self.handlePlayerMove((x, y))
+
+class VictoryScreen(tk.Frame):
+    def __init__(self, master, winner:str):
+        super().__init__()
+        self.master = master
+
+        PAD = 10
+        BUTTONWIDTH = 40
+        BUTTONHEIGHT = 7
+
+        self.label = tk.Label(self, text=f"{winner} Won!", font=('Arial', 18))
+        self.rematchbutton = tk.Button(self, command=self.rematch, text="Rematch", width=BUTTONWIDTH, height=BUTTONHEIGHT)
+        self.titlebutton = tk.Button(self, command=self.title, text="Title Screen", width=BUTTONWIDTH, height=BUTTONHEIGHT)
+        self.exitbutton = tk.Button(self, command=self.master.destroy, text="Quit", width=BUTTONWIDTH, height=BUTTONHEIGHT)
+
+        self.label.pack(pady=PAD)
+        self.rematchbutton.pack(pady=PAD)
+        self.titlebutton.pack(pady=PAD)
+        self.exitbutton.pack(pady=PAD)
+    
+    def rematch(self):
+        raise NotImplementedError("Rematch function is not implemented yet")
+
+    def title(self):
+        self.master.display(TitleScreen(self.master))
+        
 
 # main game object
 class Game(tk.Tk):
@@ -396,8 +456,7 @@ class Game(tk.Tk):
         self.title("Battleship")
 
         self.current_screen = None # current frame being displayed
-        self.next_screen = TitleScreen(self) # next frame to be displayed
-        self.display_next()
+        self.display(TitleScreen(self))
 
     def title_screen(self):
         ts = TitleScreen(self)
@@ -411,20 +470,16 @@ class Game(tk.Tk):
         js = JoinScreen(self)
         js.pack()
 
-    def display_next(self):
-        """Destroy current frame and display next"""
+    def display(self, screen):
+        """Destroy current screen and display passed screen."""
         if self.current_screen is not None:
             self.current_screen.destroy()
-        self.current_screen = self.next_screen
+        self.current_screen = screen
         self.current_screen.pack()
-        self.next_screen = None
-
-
 
 if __name__ == "__main__":
-    #game = Game()
-    #game.mainloop()
-    root = tk.Tk()
+    Game().mainloop()
+    '''root = tk.Tk()
     game = GameScreen(root, ComputerPlayer())
     game.pack()
-    root.mainloop()
+    root.mainloop()'''

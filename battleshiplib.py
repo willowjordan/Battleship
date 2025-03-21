@@ -61,7 +61,6 @@ class Ship():
 
 class Board():
     def __init__(self, ships=None):
-        self.ships = {}
         # shots the enemy has fired onto your grid
         # format - (xpos:int, ypos:int) => hit:bool
         self.enemyshots = {}
@@ -69,6 +68,8 @@ class Board():
         # format - (xpos:int, ypos:int) => hit:bool
         self.myshots = {}
         self.occupiedspaces = []
+        self.aliveShips = []
+        self.deadShips = []
 
         # constants
         self.MIN_X = 1
@@ -81,7 +82,7 @@ class Board():
                 self.addShip(s)
     
     def addShip(self, ship):
-        self.ships[ship.name] = ship
+        self.aliveShips.append(ship)
         for space in ship.spaces:
             self.occupiedspaces.append(space)
 
@@ -96,28 +97,30 @@ class Board():
         if pos in self.enemyshots:
             raise DuplicateShotError("There is already an enemy shot there!")
         
-        for ship in self.ships.values():
+        for ship in self.aliveShips:
             if pos in ship.spaces:
                 self.enemyshots[pos] = True # hit
                 ship.spaces.remove(pos)
-                if ship.isSunk(): return Result.SUNK # tells calling function to check victory conditions
+                if ship.isSunk():
+                    self.aliveShips.remove(ship)
+                    self.deadShips.append(ship)
+                    return Result.SUNK # tells calling function to check victory conditions
                 else: return Result.HIT
         self.enemyshots[pos] = False # miss
         return Result.MISS
-
-    def allShipsSunk(self):
-        for ship in self.ships:
-            if not ship.isSunk(): return False
-        return True
     
     def isShipValid(self, ship:Ship):
-        """Returns 0 if ship placement is valid, 1 if out of bounds, 2 if inside an existing ship"""
+        """Return 0 if ship placement is valid, 1 if out of bounds, 2 if inside an existing ship"""
         for space in ship.spaces:
             if (space[0] < self.MIN_X) | (space[0] > self.MAX_X) | (space[1] < self.MIN_Y) | (space[1] > self.MAX_Y):
                 return 1
             if space in self.occupiedspaces:
                 return 2
         return 0
+
+    def lastShipSunk(self):
+        """Return the last ship sunk"""
+        return self.deadShips[len(self.deadShips)-1]
 
 class Player():
     def __init__(self):
@@ -151,7 +154,6 @@ class ComputerPlayer(Player):
         return True
 
     def setupBoard(self):
-        time.sleep(random.random() * 5) # add random time delay to make player think computer is running some super fancy algorithm
         b = self.board
         shipsToPlace = [(5, "Carrier"), (4, "Battleship"), (3, "Destroyer"), (3, "Submarine"), (2, "Patrol Boat")]
         while len(shipsToPlace) > 0:
@@ -169,7 +171,7 @@ class ComputerPlayer(Player):
         return self.board.addEnemyShot(move)
     
     def getMove(self):
-        time.sleep(random.random() * 2) # add random time delay to make player think computer is running some super fancy algorithm
+        time.sleep(random.uniform(0.5, 1.5)) # add random time delay to make player think computer is running some super fancy algorithm
         b = self.board
         valid = False
         while not valid:
