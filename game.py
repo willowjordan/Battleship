@@ -1,33 +1,35 @@
 """
 BUGS:
-    - make backgrounds consistent in menu screen
-    - 
+    - clicking during opponent's turn "buffers" a click (may be unfixable, but could maybe use threading)
+    - with slow CPU, last player ship placement lags until response from CPU is received
 FEATURES TO ADD:
-    - make smarter CPU
-    - add settings screen before playing against CPU
+    - implement intermediate and advanced CPUs
     - implement multiplayer
 """
 
 import tkinter as tk
 import copy
 
-from battleshiplib import *
+from player import * # includes Player, CPU, Board, Ship, etc
+
+# UI CONSTANTS
+BG_COLOR = "lightblue"
+BUTTON_WIDTH = 40
+BUTTON_HEIGHT = 7
+PAD = 10
+UI_FONT = ('Arial', 18)
+GAME_FONT = ('Helvetica', 16)
 
 class TitleScreen(tk.Frame):
     def __init__(self, master):
-        super().__init__(background="lightblue")
+        super().__init__(background = BG_COLOR)
         self.master = master
-        master.configure(background = "lightblue")
 
-        PAD = 10
-        BUTTONWIDTH = 40
-        BUTTONHEIGHT = 7
-
-        self.label = tk.Label(self, text="Battleship", font=('Arial', 18), background="lightblue")
-        self.localbutton = tk.Button(self, command=self.local_game, text="Play VS Computer", width=BUTTONWIDTH, height=BUTTONHEIGHT)
-        self.hostbutton = tk.Button(self, command=self.host_screen, text="Host Game", width=BUTTONWIDTH, height=BUTTONHEIGHT)
-        self.joinbutton = tk.Button(self, command=self.join_screen, text="Join Game", width=BUTTONWIDTH, height=BUTTONHEIGHT)
-        self.exitbutton = tk.Button(self, command=self.master.destroy, text="Quit", width=BUTTONWIDTH, height=BUTTONHEIGHT)
+        self.label = tk.Label(self, text="Battleship", font=UI_FONT, background=BG_COLOR)
+        self.localbutton = tk.Button(self, command=self.local_game, text="Play VS Computer", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+        self.hostbutton = tk.Button(self, command=self.host_screen, text="Host Game", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+        self.joinbutton = tk.Button(self, command=self.join_screen, text="Join Game", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+        self.exitbutton = tk.Button(self, command=self.master.destroy, text="Quit", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
 
         self.label.pack(pady=PAD)
         self.localbutton.pack(pady=PAD)
@@ -36,7 +38,7 @@ class TitleScreen(tk.Frame):
         self.exitbutton.pack(pady=PAD)
     
     def local_game(self):
-        self.master.display(GameScreen(self.master, ComputerPlayer()))
+        self.master.display(CPUPregameScreen(self.master))
     
     def host_screen(self):
         self.master.display(HostScreen(self.master))
@@ -44,21 +46,70 @@ class TitleScreen(tk.Frame):
     def join_screen(self):
         self.master.display(JoinScreen(self.master))
 
-class HostScreen(tk.Frame):
+class CPUPregameScreen(tk.Frame):
     def __init__(self, master):
-        super().__init__()
+        super().__init__(background=BG_COLOR)
         self.master = master
 
-        BUTTONWIDTH = 40
-        BUTTONHEIGHT = 7
+        self.difficulty_options = ["Easy", "Medium", "Hard"]
+        self.d_selection = tk.StringVar()
+        self.speed_options = ["Slow", "Fast"]
+        self.s_selection = tk.StringVar()
 
-        self.label = tk.Label(self, text="Host a Game...", font=('Arial', 18))
-        self.lobbynamelabel = tk.Label(self, text="Lobby Name: ")
+        self.label = tk.Label(self, text="CPU Settings", font=UI_FONT, background = BG_COLOR)
+        self.difficultylabel = tk.Label(self, text="Difficulty: ", background = BG_COLOR)
+        self.difficulty = tk.OptionMenu(self, self.d_selection, *self.difficulty_options)
+        self.speedlabel = tk.Label(self, text="Speed: ", background = BG_COLOR)
+        self.speed = tk.OptionMenu(self, self.s_selection, *self.speed_options)
+        self.startbutton = tk.Button(self, command=self.start, text="Start Game", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+        self.backbutton = tk.Button(self, command=self.back, text="Back", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+
+        self.label.grid(row=1, column=1, columnspan=2, pady=PAD)
+        self.difficultylabel.grid(row=2, column=1, pady=PAD)
+        self.difficulty.grid(row=2, column=2, pady=PAD)
+        self.speedlabel.grid(row=3, column=1, pady=PAD)
+        self.speed.grid(row=3, column=2, pady=PAD)
+        self.startbutton.grid(row=5, column=1, columnspan=2, pady=PAD)
+        self.backbutton.grid(row=6, column=1, columnspan=2, pady=PAD)
+    
+    def start(self):
+        errormsg = ""
+
+        s = self.s_selection.get()
+        if s == "Slow": slow = True
+        elif s == "Fast": slow = False
+        else: errormsg += "Please select a speed value.\n"; slow = None
+
+        d = self.d_selection.get()
+        if d == "Easy": cpu = RandomCPU(slow)
+        elif d == "Medium": cpu = IntermediateCPU(slow)
+        elif d == "Hard": cpu = AdvancedCPU(slow)
+        else: errormsg += "Please select a difficulty value.\n"
+
+        if errormsg == "": # no errors
+            self.master.display(GameScreen(self.master, ComputerPlayer(cpu)))
+        else:
+            if hasattr(self, 'errorlabel'):
+                self.errorlabel.configure(text=errormsg)
+            else:
+                self.errorlabel = tk.Label(self, text=errormsg, font=UI_FONT, background = BG_COLOR, foreground="red")
+                self.errorlabel.grid(row=4, column=1, columnspan=2)
+
+    def back(self):
+        self.master.display(TitleScreen(self.master))
+
+class HostScreen(tk.Frame):
+    def __init__(self, master):
+        super().__init__(background=BG_COLOR)
+        self.master = master
+
+        self.label = tk.Label(self, text="Host a Game...", font=UI_FONT, background = BG_COLOR)
+        self.lobbynamelabel = tk.Label(self, text="Lobby Name: ", background = BG_COLOR)
         self.lobbyname = tk.Text(self, height=3, bg="white", fg="black")
-        self.displaynamelabel = tk.Label(self, text="Display Name: ")
+        self.displaynamelabel = tk.Label(self, text="Display Name: ", background = BG_COLOR)
         self.displayname = tk.Text(self, height=3, bg="white", fg="black")
-        self.startbutton = tk.Button(self, command=self.createLobby, text="Start Lobby", width=BUTTONWIDTH, height=BUTTONHEIGHT)
-        self.backbutton = tk.Button(self, command=self.back, text="Back", width=BUTTONWIDTH, height=BUTTONHEIGHT)
+        self.startbutton = tk.Button(self, command=self.createLobby, text="Start Lobby", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+        self.backbutton = tk.Button(self, command=self.back, text="Back", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
 
         self.label.grid(row=1, column=1, columnspan=2)
         self.lobbynamelabel.grid(row=2, column=1)
@@ -123,8 +174,8 @@ class GameScreen(tk.Canvas):
         """Draw things that won't change"""
         # component backgrounds
         self.create_image(200, 0, image=self.ocean, anchor="nw") # targeting and primary grid background
-        self.create_rectangle(600, 0, 800, 400, fill="lightblue", width=0) # enemy ships
-        self.create_rectangle(600, 400, 800, 800, fill="lightblue", width=0) # your ships
+        self.create_rectangle(600, 0, 800, 400, fill=BG_COLOR, width=0) # enemy ships
+        self.create_rectangle(600, 400, 800, 800, fill=BG_COLOR, width=0) # your ships
 
         # lines separating components
         self.create_line(200, 0, 200, 800, width=2)
@@ -132,7 +183,7 @@ class GameScreen(tk.Canvas):
         self.create_line(600, 0, 600, 800, width=2)
 
         # targeting grid
-        self.create_text(400, 25, anchor="center", text="Targeting Grid", fill="lightgreen", font=("Helvetica", "16"))
+        self.create_text(400, 25, anchor="center", text="Targeting Grid", fill="lightgreen", font=GAME_FONT)
         self.create_image(250, 50, image=self.radar, anchor="nw")
         self.create_line(250, 50, 550, 50, fill="green", width=1)
         self.create_line(550, 50, 550, 350, fill="green", width=1)
@@ -140,7 +191,7 @@ class GameScreen(tk.Canvas):
         self.create_line(250, 350, 250, 50, fill="green", width=1)
 
         # primary grid
-        self.create_text(400, 425, anchor="center", text="Primary Grid", fill="lightgreen", font=("Helvetica", "16"))
+        self.create_text(400, 425, anchor="center", text="Primary Grid", fill="lightgreen", font=GAME_FONT)
         self.create_image(250, 450, image=self.radar, anchor="nw")
         self.create_line(250, 450, 550, 450, fill="green", width=1)
         self.create_line(550, 450, 550, 750, fill="green", width=1)
@@ -152,7 +203,7 @@ class GameScreen(tk.Canvas):
         PAD_Y = 50
 
         # enemy ships
-        self.create_text(700, 25, anchor="center", text="Enemy Ships", fill="black", font=("Helvetica", "16"))
+        self.create_text(700, 25, anchor="center", text="Enemy Ships", fill="black", font=GAME_FONT)
         self.drawShip(600+PAD_X, 50, 5)
         self.drawShip(600+PAD_X, 50+PAD_Y, 4)
         self.drawShip(600+PAD_X, 50+2*PAD_Y, 3)
@@ -160,7 +211,7 @@ class GameScreen(tk.Canvas):
         self.drawShip(600+PAD_X, 50+4*PAD_Y, 2)
 
         # friendly ships
-        self.create_text(700, 425, anchor="center", text="Your Ships", fill="black", font=("Helvetica", "16"))
+        self.create_text(700, 425, anchor="center", text="Your Ships", fill="black", font=GAME_FONT)
         self.drawShip(600+PAD_X, 450, 5)
         self.drawShip(600+PAD_X, 450+PAD_Y, 4)
         self.drawShip(600+PAD_X, 450+2*PAD_Y, 3)
@@ -252,7 +303,7 @@ class GameScreen(tk.Canvas):
         :param shipName: name of ship to draw strikethrough through
         """
         x = 625
-        pad = 10
+        shippad = 10
         if opponent: y = 65
         else: y = 465
         
@@ -263,19 +314,19 @@ class GameScreen(tk.Canvas):
         elif shipName == "Patrol Boat": length = 2*30; y += 200
         else: raise ValueError(f"Unknown ship name \"{shipName}\"")
 
-        self.create_line(x-pad, y, x+length+pad, y, fill="red", width=3)
+        self.create_line(x-shippad, y, x+length+shippad, y, fill="red", width=3)
 
     class InfoSidebar(tk.Frame):
         def __init__(self, master):
-            super().__init__(bg="lightblue")
+            super().__init__(bg=BG_COLOR)
             self.master = master
             self.labels:dict[str, tk.Label] = {}
 
-            self.labels["turninfo"] = tk.Label(self, text="Setup Phase", bg="lightblue", font=("Helvetica", "16"))
-            self.labels["instructions"] = tk.Label(self, text="Place Your Ships\nUse arrow keys to move the ship\nPress Space to rotate\nPress Enter to confirm", bg="lightblue")
-            self.labels["lobbyinfoheader"] = tk.Label(self, text="Lobby Info:", bg="lightblue", font=("Helvetica", "16"))
-            self.labels["lobbyinfo"] = tk.Label(self, text="Game Type: Local", bg="lightblue")
-            self.labels["opponentinfo"] = tk.Label(self, text="Opponent: CPU", bg="lightblue")
+            self.labels["turninfo"] = tk.Label(self, text="Setup Phase", bg=BG_COLOR, font=GAME_FONT)
+            self.labels["instructions"] = tk.Label(self, text="Place Your Ships\nUse arrow keys to move the ship\nPress Space to rotate\nPress Enter to confirm", bg=BG_COLOR)
+            self.labels["lobbyinfoheader"] = tk.Label(self, text="Lobby Info:", bg=BG_COLOR, font=GAME_FONT)
+            self.labels["lobbyinfo"] = tk.Label(self, text="Game Type: Local", bg=BG_COLOR)
+            self.labels["opponentinfo"] = tk.Label(self, text="Opponent: CPU", bg=BG_COLOR)
 
             for lb in self.labels.values():
                 lb.pack()
@@ -382,7 +433,7 @@ class GameScreen(tk.Canvas):
             self.drawShot(False, move, result)
             if result == Result.SUNK:
                 self.drawSunk(True, self.opponent.board.lastShipSunk().name)
-                self.checkVictory()
+                if self.checkVictory() == 1: return
             self.changeTurns()
         except DuplicateShotError: pass # do nothing if player tries to click the same spot twice
     
@@ -394,13 +445,18 @@ class GameScreen(tk.Canvas):
         self.opponent.sendMoveResult(move, result)
         if result == Result.SUNK:
             self.drawSunk(False, self.opponent.board.lastShipSunk().name)
-            self.checkVictory()
+            if self.checkVictory() == 1: return
         self.changeTurns()
     
     def checkVictory(self):
-        """Check to see if either player has won. If so, go to victory screen."""
-        if len(self.board.aliveShips) == 0: self.master.display(VictoryScreen(self.master, "Opponent"))
-        if len(self.opponent.board.aliveShips) == 0: self.master.display(VictoryScreen(self.master, "Player"))
+        """Check to see if either player has won. If so, go to victory screen and return 1. Otherwise, return 0."""
+        if len(self.board.aliveShips) == 0:
+            self.master.display(VictoryScreen(self.master, "Opponent"))
+            return 1
+        if len(self.opponent.board.aliveShips) == 0:
+            self.master.display(VictoryScreen(self.master, "Player"))
+            return 1
+        return 0
     
     ### INPUT HANDLING FUNCTIONS ###
     def onKeyPress(self, event):
@@ -415,7 +471,6 @@ class GameScreen(tk.Canvas):
             elif event.keysym == "Return": self.confirmSetupShip()
 
     def onClick(self, event:tk.Event):
-        print(f"Click at {(event.x, event.y)}")
         if not self.myturn: return # ignore input during opponent's turn
 
         if self.game_phase == "Main":
@@ -431,17 +486,13 @@ class GameScreen(tk.Canvas):
 
 class VictoryScreen(tk.Frame):
     def __init__(self, master, winner:str):
-        super().__init__()
+        super().__init__(background = BG_COLOR)
         self.master = master
 
-        PAD = 10
-        BUTTONWIDTH = 40
-        BUTTONHEIGHT = 7
-
-        self.label = tk.Label(self, text=f"{winner} Won!", font=('Arial', 18))
-        self.rematchbutton = tk.Button(self, command=self.rematch, text="Rematch", width=BUTTONWIDTH, height=BUTTONHEIGHT)
-        self.titlebutton = tk.Button(self, command=self.title, text="Title Screen", width=BUTTONWIDTH, height=BUTTONHEIGHT)
-        self.exitbutton = tk.Button(self, command=self.master.destroy, text="Quit", width=BUTTONWIDTH, height=BUTTONHEIGHT)
+        self.label = tk.Label(self, text=f"{winner} Won!", font=UI_FONT, bg=BG_COLOR)
+        self.rematchbutton = tk.Button(self, command=self.rematch, text="Rematch", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+        self.titlebutton = tk.Button(self, command=self.title, text="Title Screen", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+        self.exitbutton = tk.Button(self, command=self.master.destroy, text="Quit", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
 
         self.label.pack(pady=PAD)
         self.rematchbutton.pack(pady=PAD)
@@ -461,6 +512,7 @@ class Game(tk.Tk):
         super().__init__()
         self.geometry("800x800")
         self.title("Battleship")
+        self.configure(background=BG_COLOR)
 
         self.current_screen = None # current frame being displayed
         self.display(TitleScreen(self))
@@ -485,7 +537,8 @@ class Game(tk.Tk):
         self.current_screen.pack()
 
 if __name__ == "__main__":
-    Game().mainloop()
+    game = Game()
+    game.mainloop()
     '''root = tk.Tk()
     game = GameScreen(root, ComputerPlayer())
     game.pack()
