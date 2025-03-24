@@ -1,4 +1,6 @@
 class Ship():
+    POSSIBLE_DIRECTIONS = (1, 0), (0, 1), (-1, 0), (0, -1)
+
     def __init__(self, pos:tuple, l:int, d:tuple, name:str=""):
         """
         :param pos: tuple(int, int) for the position of the origin of the ship
@@ -6,7 +8,7 @@ class Ship():
         :param d: tuple(int, int) for direction the ship is pointing in; can be (1, 0), (0, 1), (-1, 0), or (0, -1)
         :param name: name/id of the ship
         """
-        if d not in [(1, 0), (0, 1), (-1, 0), (0, -1)]: raise(ValueError, "Bad direction value")
+        if d not in Ship.POSSIBLE_DIRECTIONS: raise(ValueError, "Bad direction value")
         self.name = name
         self.pos = pos
         self.length = l

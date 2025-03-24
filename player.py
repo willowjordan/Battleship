@@ -40,7 +40,7 @@ class ComputerPlayer(Player):
         return self.board.addEnemyShot(move)
     
     def getMove(self):
-        return self.ai.makeMove()
+        return self.ai.getMove()
     
     def sendMoveResult(self, move:tuple, result:Result):
         self.board.addMyShot(move, result)

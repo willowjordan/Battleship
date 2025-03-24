@@ -32,6 +32,16 @@ class Board():
         if ships is not None:
             for s in ships:
                 self.addShip(s)
+
+    def getNeighbors(self, pos):
+        """Return a list of valid neighboring squares of position pos."""
+        rv = []
+        for dir in Ship.POSSIBLE_DIRECTIONS:
+            neighbor = (pos[0] + dir[0], pos[1] + dir[1])
+            if (neighbor[0] < self.MIN_X) | (neighbor[0] > self.MAX_X): continue
+            if (neighbor[1] < self.MIN_Y) | (neighbor[1] > self.MAX_Y): continue
+            rv.append(neighbor)
+        return rv
     
     def addShip(self, ship):
         self.aliveShips.append(ship)

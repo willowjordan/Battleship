@@ -2,6 +2,7 @@
 
 import time
 import random
+import copy
 
 from board import *
 
@@ -26,10 +27,14 @@ class CPU():
         self.board = board
 
     def setup(self): raise NotImplementedError()
-    def makeMove(self): raise NotImplementedError()
+    def getMove(self): raise NotImplementedError()
 
 class RandomCPU(CPU):
-    """A CPU that makes all of its moves randomly."""
+    """
+    A CPU that makes all of its moves randomly.
+    Setup: Randomly places ships.
+    Moves: Makes completely random moves. Only has access to RANDOM mode.
+    """
     def setup(self):
         if self.slow: time.sleep(random.uniform(1.5, 4.5)) # add random time delay to make player think computer is running some super fancy algorithm
         b = self.board
@@ -40,12 +45,12 @@ class RandomCPU(CPU):
             valid = -1
             while valid != 0:
                 pos = (random.randint(b.MIN_X, b.MAX_X), random.randint(b.MIN_Y, b.MAX_Y))
-                direction = random.choice([(1, 0), (0, 1), (-1, 0), (0, -1)])
+                direction = random.choice(Ship.POSSIBLE_DIRECTIONS)
                 nextShip = Ship(pos, nextShipInfo[0], direction, nextShipInfo[1])
                 valid = b.isShipValid(nextShip)
             b.addShip(nextShip)
     
-    def makeMove(self):
+    def getMove(self):
         if self.slow: time.sleep(random.uniform(0.5, 1.5))
         b = self.board
         valid = False
@@ -57,9 +62,9 @@ class RandomCPU(CPU):
     
 class IntermediateCPU(CPU):
     """
-    Smarter than Random CPU
-    Setup: Tries to place ships with at least one square of space between them
-    Moves: Makes random moves until it hits a ship, then tries adjacent squares until it sinks a ship
+    Smarter than Random CPU.
+    Setup: Tries to place ships with at least one square of space between them.
+    Moves: Only has access to RANDOM and SHIPGROUP modes.
     """
     def __init__(self):
         super.__init__()
@@ -80,7 +85,7 @@ class IntermediateCPU(CPU):
             valid = -1
             while valid != 0:
                 pos = (random.randint(b.MIN_X, b.MAX_X), random.randint(b.MIN_Y, b.MAX_Y))
-                direction = random.choice([(1, 0), (0, 1), (-1, 0), (0, -1)])
+                direction = random.choice(Ship.POSSIBLE_DIRECTIONS)
                 length = nextShipInfo[0]
                 nextShip = Ship(pos, length, direction, nextShipInfo[1])
                 valid = b.isShipValid(nextShip)
@@ -98,44 +103,90 @@ class IntermediateCPU(CPU):
                         valid = 1
             b.addShip(nextShip)
     
-    #NOTE: I might end up moving this to Advanced, my logic so far seems a little too sophisticated for Intermediate
-    def makeMove(self):
+    def getMove(self):
         if self.slow: time.sleep(random.uniform(0.5, 1.5))
+        if self.targinfo["mode"] == Mode.RANDOM: return self.randomMove()
+        else: return self.shipGroupMove()
+        
+    def randomMove(self):
+        """Return a random valid move. If last move was a hit, switch modes."""
         b = self.board
 
-        if self.targinfo["mode"] == Mode.SINGLESHIP:
-            if self.lastresult == Result.SUNK: # sunk the ship, so leave targeting mode and start making random guesses
-                self.targinfo["mode"] = Mode.RANDOM
-                self.targinfo["direction"] = None
-            else:
-                d = self.targinfo["direction"]
-                nextMove = (self.lastmove[0] + d[0], self.lastmove[1] + d[1])
-                if (nextMove in self.board.myshots) | (self.lastresult == Result.MISS): # went off the edge, so come back the other direction
-                    d = self.targinfo["direction"] = (-d[0], -d[1]) # update both attribute and abbreviated copy
-                    nextMove = (self.lastmove[0] + d[0], self.lastmove[1] + d[1])
-                    while nextMove not in self.board.myshots:
-                        if self.board.myshots[nextMove] != Result.HIT: # went off the edge in both directions, so AI is being fooled by multiple ships right next to each other
-                            # TODO: do something here
-                            break
-                        nextMove = (nextMove[0] + d[0], nextMove[1] + d[1])
-                # regardless of if condition is true, we now have the correct value of nextMove
-                return nextMove
-        if self.targinfo["mode"] == Mode.SHIPGROUP:
-            # first check if we have sunk the whole group
-            
-            pass
-        # random mode
+        if self.lastresult == Result.HIT:
+            self.setShipGroup()
+            return self.shipGroupMove()
+
         valid = False
         while not valid:
             move = (random.randint(b.MIN_X, b.MAX_X), random.randint(b.MIN_Y, b.MAX_Y))
             if move not in b.myshots:
                 valid = True
         return move
+    
+    def shipGroupMove(self):
+        """Make a move with the goal of sinking an entire group of connected ships. If ship group has been completely discovered, switch modes."""
+        
+
+    def setShipGroup(self):
+        """
+        Automatically determine the ship group and set variables accordingly.
+        This funciton should only be called when the last move was a hit.
+        """
+        b = self.board
+        self.targinfo["mode"] = Mode.SHIPGROUP
+        group = [self.lastmove]
+        while True: # continue exploring until all neighbors have been discovered
+            newgroup = copy.deepcopy(group)
+            neighbors = []
+            for pos in group:
+                neighbors.append(b.getNeighbors(pos))
+            neighbors = list(set(neighbors)) # remove duplicates using set
+            for nb in neighbors:
+                if nb in b.myshots:
+                    if b.myshots[nb] == Result.MISS:
+                        neighbors.remove(nb)
+                    else:
+                        newgroup.append(nb)
+            
+            # loop condition
+            if group == newgroup:
+                self.targinfo["shipGroup"] = group
+                self.targinfo["shipGroupBorders"] = neighbors
+                break
+            else:
+                group = newgroup
 
 class AdvancedCPU(CPU):
-    """Smarter than Intermediate"""
+    """
+    Smarter than Intermediate
+    Setup: TBD
+    Moves: Has access to all modes. RANDOM mode is semi-random and attempts to maximize board coverage.
+    """
     def setup(self):
         raise NotImplementedError()
     
-    def makeMove(self):
+    def getMove(self):
         raise NotImplementedError()
+    
+    def randomMove(self):
+        pass
+    
+    def singleShipMove(self):
+        """Return a move with the goal of sinking a single identified ship."""
+        if self.lastresult == Result.SUNK: # sunk the ship, so leave targeting mode and start making random guesses
+            self.targinfo["mode"] = Mode.RANDOM
+            self.targinfo["direction"] = None
+        else:
+            d = self.targinfo["direction"]
+            nextMove = (self.lastmove[0] + d[0], self.lastmove[1] + d[1])
+            if (nextMove in self.board.myshots) | (self.lastresult == Result.MISS): # went off the edge, so come back the other direction
+                d = self.targinfo["direction"] = (-d[0], -d[1]) # update both attribute and abbreviated copy
+                nextMove = (self.lastmove[0] + d[0], self.lastmove[1] + d[1])
+                while nextMove not in self.board.myshots:
+                    if self.board.myshots[nextMove] != Result.HIT: # went off the edge in both directions, so AI is being fooled by multiple ships right next to each other
+                        # change mode and make shipgroup move instead
+                        self.setShipGroup()
+                        return self.shipGroupMove()
+                    nextMove = (nextMove[0] + d[0], nextMove[1] + d[1])
+            # regardless of if condition is true, we now have the correct value of nextMove
+            return nextMove
