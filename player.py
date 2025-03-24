@@ -44,5 +44,6 @@ class ComputerPlayer(Player):
     
     def sendMoveResult(self, move:tuple, result:Result):
         self.board.addMyShot(move, result)
-        self.ai.lastmove = (move, result)
+        self.ai.lastmove = move
+        self.ai.lastresult = result
         
