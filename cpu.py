@@ -37,26 +37,24 @@ class RandomCPU(CPU):
     """
     def setup(self):
         if self.slow: time.sleep(random.uniform(1.5, 4.5)) # add random time delay to make player think computer is running some super fancy algorithm
-        b = self.board
         shipsToPlace = [(5, "Carrier"), (4, "Battleship"), (3, "Destroyer"), (3, "Submarine"), (2, "Patrol Boat")]
         while len(shipsToPlace) > 0:
             nextShipInfo = shipsToPlace[0]
             shipsToPlace.pop(0)
             valid = -1
             while valid != 0:
-                pos = (random.randint(b.MIN_X, b.MAX_X), random.randint(b.MIN_Y, b.MAX_Y))
+                pos = (random.randint(self.board.MIN_X, self.board.MAX_X), random.randint(self.board.MIN_Y, self.board.MAX_Y))
                 direction = random.choice(Ship.POSSIBLE_DIRECTIONS)
                 nextShip = Ship(pos, nextShipInfo[0], direction, nextShipInfo[1])
-                valid = b.isShipValid(nextShip)
-            b.addShip(nextShip)
+                valid = self.board.isShipValid(nextShip)
+            self.board.addShip(nextShip)
     
     def getMove(self):
         if self.slow: time.sleep(random.uniform(0.5, 1.5))
-        b = self.board
         valid = False
         while not valid:
-            move = (random.randint(b.MIN_X, b.MAX_X), random.randint(b.MIN_Y, b.MAX_Y))
-            if move not in b.myshots:
+            move = (random.randint(self.board.MIN_X, self.board.MAX_X), random.randint(self.board.MIN_Y, self.board.MAX_Y))
+            if move not in self.board.myshots:
                 valid = True
         return move
     
@@ -66,95 +64,99 @@ class IntermediateCPU(CPU):
     Setup: Tries to place ships with at least one square of space between them.
     Moves: Only has access to RANDOM and SHIPGROUP modes.
     """
-    def __init__(self):
-        super.__init__()
-        self.targinfo = {
-            "mode": Mode.RANDOM,
-            "direction": None, # what direction to move in when firing shots
-            "shipGroup": [],
-            "shipGroupBorders": [],
-        }
+    def __init__(self, slow:bool):
+        super().__init__(slow)
+        self.targetingMode = Mode.RANDOM
+        self.shipGroup = [] # all confirmed spaces of the current ship group being fired upon
+        self.shipGroupBorders = [] # spaces bordering the shipGroup squares that have not been fired upon yet
 
     def setup(self):
         if self.slow: time.sleep(random.uniform(1.5, 4.5))
-        b = self.board
         shipsToPlace = [(5, "Carrier"), (4, "Battleship"), (3, "Destroyer"), (3, "Submarine"), (2, "Patrol Boat")]
         while len(shipsToPlace) > 0:
             nextShipInfo = shipsToPlace[0]
             shipsToPlace.pop(0)
             valid = -1
             while valid != 0:
-                pos = (random.randint(b.MIN_X, b.MAX_X), random.randint(b.MIN_Y, b.MAX_Y))
+                pos = (random.randint(self.board.MIN_X, self.board.MAX_X), random.randint(self.board.MIN_Y, self.board.MAX_Y))
                 direction = random.choice(Ship.POSSIBLE_DIRECTIONS)
                 length = nextShipInfo[0]
                 nextShip = Ship(pos, length, direction, nextShipInfo[1])
-                valid = b.isShipValid(nextShip)
+                valid = self.board.isShipValid(nextShip)
                 # check squares around ship
                 spaces = nextShip.spaces
                 squaresAround = []
-                for x in range(spaces[0][0]-1, spaces[length][0]+1):
-                    for y in range(spaces[0][1]-1, spaces[length][1]+1):
+                for x in range(spaces[0][0]-1, spaces[length-1][0]+1):
+                    for y in range(spaces[0][1]-1, spaces[length-1][1]+1):
                         if (x, y) in spaces: continue
-                        if (x < b.MIN_X) | (x > b.MAX_X): continue
-                        if (y < b.MIN_Y) | (y > b.MAX_Y): continue
+                        if (x < self.board.MIN_X) | (x > self.board.MAX_X): continue
+                        if (y < self.board.MIN_Y) | (y > self.board.MAX_Y): continue
                         squaresAround.append((x, y))
                 for sq in squaresAround:
-                    if sq in b.occupiedspaces:
+                    if sq in self.board.occupiedspaces:
                         valid = 1
-            b.addShip(nextShip)
+            self.board.addShip(nextShip)
     
     def getMove(self):
         if self.slow: time.sleep(random.uniform(0.5, 1.5))
-        if self.targinfo["mode"] == Mode.RANDOM: return self.randomMove()
-        else: return self.shipGroupMove()
+        if self.targetingMode == Mode.RANDOM:
+            if self.lastresult == Result.HIT:
+                # If last move was a hit, switch modes.
+                self.setShipGroup()
+                return self.shipGroupMove()
+            return self.randomMove()
+        else: # in SHIPGROUP mode
+            # Update ship group variables for last move
+            self.shipGroupBorders.remove(self.lastmove)
+            if self.lastresult != Result.MISS: # last move was a hit
+                self.shipGroup.append(self.lastmove)
+                neighbors = self.board.getNeighbors(self.lastmove)
+                for nb in neighbors:
+                    if nb not in self.board.myshots: # space has not been fired upon
+                        self.shipGroupBorders.append(nb)
+            # Check if the ship group has been completely discovered. If so, switch modes
+            if len(self.shipGroupBorders) == 0:
+                return self.randomMove()
+            return self.shipGroupMove()
         
     def randomMove(self):
-        """Return a random valid move. If last move was a hit, switch modes."""
-        b = self.board
-
-        if self.lastresult == Result.HIT:
-            self.setShipGroup()
-            return self.shipGroupMove()
-
+        """Return a random valid move."""
         valid = False
         while not valid:
-            move = (random.randint(b.MIN_X, b.MAX_X), random.randint(b.MIN_Y, b.MAX_Y))
-            if move not in b.myshots:
+            move = (random.randint(self.board.MIN_X, self.board.MAX_X), random.randint(self.board.MIN_Y, self.board.MAX_Y))
+            if move not in self.board.myshots:
                 valid = True
         return move
     
+    # TODO: maybe make this more intelligent
     def shipGroupMove(self):
-        """Make a move with the goal of sinking an entire group of connected ships. If ship group has been completely discovered, switch modes."""
-        
+        """Return a move somewhere on the edge of the known ship group."""
+        return self.shipGroupBorders.pop(0)
 
     def setShipGroup(self):
         """
         Automatically determine the ship group and set variables accordingly.
         This funciton should only be called when the last move was a hit.
         """
-        b = self.board
-        self.targinfo["mode"] = Mode.SHIPGROUP
-        group = [self.lastmove]
-        while True: # continue exploring until all neighbors have been discovered
-            newgroup = copy.deepcopy(group)
-            neighbors = []
-            for pos in group:
-                neighbors.append(b.getNeighbors(pos))
-            neighbors = list(set(neighbors)) # remove duplicates using set
-            for nb in neighbors:
-                if nb in b.myshots:
-                    if b.myshots[nb] == Result.MISS:
-                        neighbors.remove(nb)
-                    else:
-                        newgroup.append(nb)
-            
-            # loop condition
-            if group == newgroup:
-                self.targinfo["shipGroup"] = group
-                self.targinfo["shipGroupBorders"] = neighbors
-                break
+        self.targetingMode = Mode.SHIPGROUP
+        self.shipGroup = []
+        self.shipGroupBorders = []
+        spacesToExplore = [self.lastmove] # this will function as a queue
+        exploredSpaces = []
+        while len(spacesToExplore) > 0:
+            nextSpace = spacesToExplore.pop(0)
+            exploredSpaces.append(nextSpace)
+            if nextSpace in self.board.myshots:
+                if self.board.myshots[nextSpace] == Result.HIT:
+                    # add to ship group and queue all unexplored neighboring spaces
+                    self.shipGroup.append(nextSpace)
+                    neighbors = self.board.getNeighbors(nextSpace)
+                    for nb in neighbors:
+                        if (nb not in spacesToExplore) & (nb not in exploredSpaces):
+                            spacesToExplore.append(nb)
             else:
-                group = newgroup
+                # this space hasn't been fired on, so add it to the borders of the ship group to be explored
+                self.shipGroupBorders.append(nextSpace)
 
 class AdvancedCPU(CPU):
     """
@@ -174,13 +176,13 @@ class AdvancedCPU(CPU):
     def singleShipMove(self):
         """Return a move with the goal of sinking a single identified ship."""
         if self.lastresult == Result.SUNK: # sunk the ship, so leave targeting mode and start making random guesses
-            self.targinfo["mode"] = Mode.RANDOM
-            self.targinfo["direction"] = None
+            self.targetingMode = Mode.RANDOM
+            self.targetingDirection = None
         else:
-            d = self.targinfo["direction"]
+            d = self.targetingDirection
             nextMove = (self.lastmove[0] + d[0], self.lastmove[1] + d[1])
             if (nextMove in self.board.myshots) | (self.lastresult == Result.MISS): # went off the edge, so come back the other direction
-                d = self.targinfo["direction"] = (-d[0], -d[1]) # update both attribute and abbreviated copy
+                d = self.targetingDirection = (-d[0], -d[1]) # update both attribute and abbreviated copy
                 nextMove = (self.lastmove[0] + d[0], self.lastmove[1] + d[1])
                 while nextMove not in self.board.myshots:
                     if self.board.myshots[nextMove] != Result.HIT: # went off the edge in both directions, so AI is being fooled by multiple ships right next to each other

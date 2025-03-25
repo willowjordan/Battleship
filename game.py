@@ -538,6 +538,7 @@ class Game(tk.Tk):
 
 if __name__ == "__main__":
     game = Game()
+    game.display(GameScreen(game, ComputerPlayer(IntermediateCPU(False))))
     game.mainloop()
     '''root = tk.Tk()
     game = GameScreen(root, ComputerPlayer())
