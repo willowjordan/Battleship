@@ -2,7 +2,6 @@
 
 import time
 import random
-import copy
 
 from board import *
 

@@ -1,9 +1,8 @@
 """
 BUGS:
     - clicking during opponent's turn "buffers" a click (may be unfixable, but could maybe use threading)
-    - with slow CPU, last player ship placement lags until response from CPU is received
 FEATURES TO ADD:
-    - implement intermediate and advanced CPUs
+    - implement advanced CPU
     - implement multiplayer
 """
 
@@ -27,14 +26,14 @@ class TitleScreen(tk.Frame):
 
         self.label = tk.Label(self, text="Battleship", font=UI_FONT, background=BG_COLOR)
         self.localbutton = tk.Button(self, command=self.local_game, text="Play VS Computer", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
-        self.hostbutton = tk.Button(self, command=self.host_screen, text="Host Game", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
-        self.joinbutton = tk.Button(self, command=self.join_screen, text="Join Game", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+        #self.hostbutton = tk.Button(self, command=self.host_screen, text="Host Game", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
+        #self.joinbutton = tk.Button(self, command=self.join_screen, text="Join Game", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
         self.exitbutton = tk.Button(self, command=self.master.destroy, text="Quit", width=BUTTON_WIDTH, height=BUTTON_HEIGHT)
 
         self.label.pack(pady=PAD)
         self.localbutton.pack(pady=PAD)
-        self.hostbutton.pack(pady=PAD)
-        self.joinbutton.pack(pady=PAD)
+        #self.hostbutton.pack(pady=PAD)
+        #self.joinbutton.pack(pady=PAD)
         self.exitbutton.pack(pady=PAD)
     
     def local_game(self):
@@ -51,7 +50,7 @@ class CPUPregameScreen(tk.Frame):
         super().__init__(background=BG_COLOR)
         self.master = master
 
-        self.difficulty_options = ["Easy", "Medium", "Hard"]
+        self.difficulty_options = ["Easy", "Medium"] # TODO: add Hard option once implemented
         self.d_selection = tk.StringVar()
         self.speed_options = ["Slow", "Fast"]
         self.s_selection = tk.StringVar()
@@ -410,6 +409,7 @@ class GameScreen(tk.Canvas):
     
     ### MAIN GAME FUNCTIONS ###
     def startGame(self):
+        self.sidebar.changeLabel("instructions", "Opponent is placing their ships...")
         self.opponent.sendConfirmation()
         self.opponent.getConfirmation() # wait for other player to be ready
         self.game_phase = "Main"

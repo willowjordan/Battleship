@@ -1,6 +1,3 @@
-import random
-import time
-
 from cpu import * # CPUs, Board, Ship, etc
 
 class Player():
