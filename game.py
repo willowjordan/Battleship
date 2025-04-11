@@ -444,7 +444,7 @@ class GameScreen(tk.Canvas):
         self.drawShot(True, move, result) # add peg for move
         self.opponent.sendMoveResult(move, result)
         if result == Result.SUNK:
-            self.drawSunk(False, self.opponent.board.lastShipSunk().name)
+            self.drawSunk(False, self.board.lastShipSunk().name)
             if self.checkVictory() == 1: return
         self.changeTurns()
     
@@ -538,7 +538,7 @@ class Game(tk.Tk):
 
 if __name__ == "__main__":
     game = Game()
-    game.display(GameScreen(game, ComputerPlayer(IntermediateCPU(False))))
+    #game.display(GameScreen(game, ComputerPlayer(IntermediateCPU(False))))
     game.mainloop()
     '''root = tk.Tk()
     game = GameScreen(root, ComputerPlayer())

@@ -98,26 +98,26 @@ class IntermediateCPU(CPU):
             self.board.addShip(nextShip)
     
     def getMove(self):
+        moveToReturn = None
         if self.slow: time.sleep(random.uniform(0.5, 1.5))
         if self.targetingMode == Mode.RANDOM:
+            # If last move was a hit, switch modes.
             if self.lastresult == Result.HIT:
-                # If last move was a hit, switch modes.
-                self.setShipGroup()
-                return self.shipGroupMove()
-            return self.randomMove()
+                self.targetingMode = Mode.SHIPGROUP
+                self.shipGroupCenter = self.lastmove # space to build the ship group around
+                moveToReturn = self.shipGroupMove()
+            else:
+                # Otherwise, return a random move
+                moveToReturn = self.randomMove()
         else: # in SHIPGROUP mode
-            # Update ship group variables for last move
-            self.shipGroupBorders.remove(self.lastmove)
-            if self.lastresult != Result.MISS: # last move was a hit
-                self.shipGroup.append(self.lastmove)
-                neighbors = self.board.getNeighbors(self.lastmove)
-                for nb in neighbors:
-                    if nb not in self.board.myshots: # space has not been fired upon
-                        self.shipGroupBorders.append(nb)
-            # Check if the ship group has been completely discovered. If so, switch modes
-            if len(self.shipGroupBorders) == 0:
-                return self.randomMove()
-            return self.shipGroupMove()
+            moveToReturn = self.shipGroupMove()
+            if moveToReturn is None:
+                self.targetingMode = Mode.RANDOM
+                self.shipGroupCenter = None
+                moveToReturn = self.randomMove()
+        
+        self.lastmove = moveToReturn
+        return moveToReturn
         
     def randomMove(self):
         """Return a random valid move."""
@@ -128,15 +128,31 @@ class IntermediateCPU(CPU):
                 valid = True
         return move
     
-    # TODO: maybe make this more intelligent
     def shipGroupMove(self):
-        """Return a move somewhere on the edge of the known ship group."""
-        return self.shipGroupBorders.pop(0)
+        """Explore from ship group center until an unfired space has been found. Return that space. If the ship group is complete, return None."""
+        spacesToExplore = [self.shipGroupCenter] # this will function as a queue
+        exploredSpaces = []
+        while len(spacesToExplore) > 0:
+            nextSpace = spacesToExplore.pop(0)
+            exploredSpaces.append(nextSpace)
+            if nextSpace in self.board.myshots:
+                if self.board.myshots[nextSpace] != Result.MISS:
+                    # queue all unexplored neighboring spaces
+                    neighbors = self.board.getNeighbors(nextSpace)
+                    for nb in neighbors:
+                        if (nb not in spacesToExplore) & (nb not in exploredSpaces):
+                            spacesToExplore.append(nb)
+            else:
+                # this space hasn't been fired on yet
+                return nextSpace
+        
+        # if all spaces have been explored
+        return None
 
-    def setShipGroup(self):
+    '''def setShipGroup(self):
         """
         Automatically determine the ship group and set variables accordingly.
-        This funciton should only be called when the last move was a hit.
+        This function should only be called when the last move was a hit.
         """
         self.targetingMode = Mode.SHIPGROUP
         self.shipGroup = []
@@ -156,7 +172,7 @@ class IntermediateCPU(CPU):
                             spacesToExplore.append(nb)
             else:
                 # this space hasn't been fired on, so add it to the borders of the ship group to be explored
-                self.shipGroupBorders.append(nextSpace)
+                self.shipGroupBorders.append(nextSpace)'''
 
 class AdvancedCPU(CPU):
     """
